@@ -15,6 +15,8 @@ namespace WindowsFormsApplication2
             ForeColor = Color.DimGray;
             BackColor = Color.Transparent;
             this.AutoToolTip = false;
+            this.AutoSize = false;
+            this.Margin = new Padding(2, 0, 2, 0);
         }
 
         /// <summary>
