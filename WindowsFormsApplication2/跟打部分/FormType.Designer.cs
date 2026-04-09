@@ -2039,7 +2039,7 @@
             // 
             this.HistoryKeysToolStripMenuItem.Name = "HistoryKeysToolStripMenuItem";
             this.HistoryKeysToolStripMenuItem.Size = new System.Drawing.Size(196, 24);
-            this.HistoryKeysToolStripMenuItem.Text = "历史按键热图...";
+            this.HistoryKeysToolStripMenuItem.Text = "历史按键统计...";
             this.HistoryKeysToolStripMenuItem.Click += new System.EventHandler(this.HistoryKeysToolStripMenuItem_Click);
             // 
             // toolStripSeparator8

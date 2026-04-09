@@ -6215,10 +6215,10 @@ namespace WindowsFormsApplication2
         }
         #endregion
 
-        #region 历史按键热图
+        #region 历史按键统计
         private void HistoryKeysToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            KeyAn kan = new KeyAn(Glob.HistoryKeysTotal, "历史按键热图", "历史按键统计");
+            KeyAn kan = new KeyAn(Glob.HistoryKeysTotal, "历史按键统计", "历史按键统计");
             kan.ShowDialog();
         }
         #endregion
