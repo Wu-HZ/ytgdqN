@@ -112,9 +112,10 @@ namespace TyDll
                     case FormWindowState.Maximized:
                         this._formSize = this.Size;
                         this._formPoint = this.Location;
-                        this.Location = new Point(0, 0);
-                        this.Width = Screen.PrimaryScreen.WorkingArea.Width;
-                        this.Height = Screen.PrimaryScreen.WorkingArea.Height;
+                        var workArea = Screen.PrimaryScreen.WorkingArea;
+                        this.Location = new Point(workArea.X, workArea.Y);
+                        this.Width = workArea.Width;
+                        this.Height = workArea.Height;
                         break;
                 }
             }
@@ -444,9 +445,10 @@ namespace TyDll
                            (this.Parent.Height - this.Height) / 2);
                         break;
                     case FormStartPosition.CenterScreen:
+                        var screenArea = Screen.PrimaryScreen.WorkingArea;
                         this.Location = new Point(
-                            (Screen.PrimaryScreen.WorkingArea.Width - this.Width) / 2,
-                            (Screen.PrimaryScreen.WorkingArea.Height - this.Height) / 2);
+                            screenArea.X + (screenArea.Width - this.Width) / 2,
+                            screenArea.Y + (screenArea.Height - this.Height) / 2);
                         break;
                     case FormStartPosition.Manual:
                     case FormStartPosition.WindowsDefaultBounds:
