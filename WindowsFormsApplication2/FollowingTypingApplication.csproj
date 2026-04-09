@@ -15,6 +15,15 @@
     <ApplicationManifest>Properties\app.manifest</ApplicationManifest>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <NoWarn>CA1416;1701;1702</NoWarn>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <NoWarn>CA1416;1701;1702</NoWarn>
+  </PropertyGroup>
+
+
   <!-- NuGet Package References -->
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
@@ -39,11 +48,5 @@
     <None Include="Resources\*.png" />
   </ItemGroup>
 
-  <!-- Assets - copy to output directory -->
-  <ItemGroup>
-    <Content Include="Assets\**\*" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="Assets_x64\**\*" CopyToOutputDirectory="PreserveNewest" Condition="'$(Platform)' == 'x64' Or '$(RuntimeIdentifier)' == 'win-x64'" />
-    <Content Include="Assets_x86\**\*" CopyToOutputDirectory="PreserveNewest" Condition="'$(Platform)' == 'x86' Or '$(RuntimeIdentifier)' == 'win-x86' Or '$(Platform)' == 'AnyCPU'" />
-  </ItemGroup>
 
 </Project>

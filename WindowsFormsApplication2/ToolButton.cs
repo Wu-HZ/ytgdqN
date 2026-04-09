@@ -15,6 +15,8 @@ namespace WindowsFormsApplication2
             ForeColor = Color.DimGray;
             BackColor = Color.Transparent;
             this.AutoToolTip = false;
+            this.AutoSize = false;
+            this.Margin = new Padding(2, 0, 2, 0);
         }
 
         /// <summary>
@@ -144,17 +146,17 @@ namespace WindowsFormsApplication2
             if (Checked)
             {
                 // Checked state - colored underline
-                using (var pen = new Pen(_BorderColor, 2))
+                using (var pen = new Pen(_BorderColor, 4))
                 {
-                    g.DrawLine(pen, 3, Height - 1, Width - 3 - _WdithAdjust, Height - 1);
+                    g.DrawLine(pen, 3, Height - 2, Width - 3 - _WdithAdjust, Height - 2);
                 }
             }
             else if (Selected || Pressed)
             {
                 // Hover/pressed state - white underline
-                using (var pen = new Pen(Color.White, 2))
+                using (var pen = new Pen(Color.White, 4))
                 {
-                    g.DrawLine(pen, 3, Height - 1, Width - 3 - _WdithAdjust, Height - 1);
+                    g.DrawLine(pen, 3, Height - 2, Width - 3 - _WdithAdjust, Height - 2);
                 }
             }
 
