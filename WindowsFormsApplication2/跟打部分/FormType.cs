@@ -258,6 +258,8 @@ namespace WindowsFormsApplication2
             {
                 this.WindowState = FormWindowState.Maximized;
             }
+
+            this.BeginInvoke(new MethodInvoker(RestoreSendSessionSnapshot));
         }
 
 
@@ -964,6 +966,227 @@ namespace WindowsFormsApplication2
                                                                      "跟打段数：" + Glob.jjAllC + "段\n" +
                                                                      "记录天数：" + Glob.TextRecDays + "天\n" +
                                                                      "平均每天：" + ((double)Glob.TextLenAll / Glob.TextRecDays).ToString("0.00") + "字"));
+        }
+
+        private string GetSendSessionSnapshotPath()
+        {
+            return Path.Combine(Application.StartupPath, "send-session.json");
+        }
+
+        private void DeleteSendSessionSnapshot()
+        {
+            string snapshotPath = GetSendSessionSnapshotPath();
+            try
+            {
+                if (File.Exists(snapshotPath))
+                {
+                    File.Delete(snapshotPath);
+                }
+            }
+            catch
+            {
+            }
+        }
+
+        private void SaveSendSessionSnapshot()
+        {
+            if (!NewSendText.发文状态 || string.IsNullOrEmpty(this.richTextBox1.Text))
+            {
+                DeleteSendSessionSnapshot();
+                return;
+            }
+
+            SendSessionSnapshot snapshot = new SendSessionSnapshot
+            {
+                CurrentContent = this.richTextBox1.Text,
+                CurrentInput = this.textBoxEx1.Text,
+                CurrentTitle = this.lblTitle.Text,
+                CurrentSegmentNum = Glob.CurSegmentNum,
+                SentId = NewSendText.SentId,
+                ArticleFullText = NewSendText.文章全文 ?? "",
+                SendFullText = NewSendText.发文全文 ?? "",
+                SendType = NewSendText.类型 ?? "",
+                SingleDisorder = NewSendText.单字乱序,
+                NoRepeat = NewSendText.乱序全段不重复,
+                SendCount = NewSendText.字数,
+                SendMark = NewSendText.标记,
+                SentSegmentCount = NewSendText.已发段数,
+                IsCycle = NewSendText.是否周期,
+                CycleValue = NewSendText.周期,
+                CycleCounter = NewSendText.周期计数,
+                ArticleSource = (int)NewSendText.ArticleSource,
+                SentCharCount = NewSendText.已发字数,
+                IsAuto = NewSendText.是否自动,
+                PhraseSeparator = NewSendText.词组发送分隔符 ?? "，",
+                PhraseDisorder = NewSendText.词组乱序,
+                Phrases = NewSendText.词组 != null ? new List<string>(NewSendText.词组) : new List<string>(),
+                AllPhrases = NewSendText.词组全文 != null ? new List<string>(NewSendText.词组全文) : new List<string>(),
+                Trim = NewSendText.trim,
+                AutoCondition = NewSendText.AutoCondition,
+                ConditionValue = NewSendText.ConditionValue != null ? NewSendText.ConditionValue.ToString() : "",
+                AutoNo = (int)NewSendText.AutoNo,
+                SegmentRecord = Glob.TempSegmentRecord != null ? new List<string>(Glob.TempSegmentRecord) : new List<string>(),
+                SendCursor = Glob.SendCursor
+            };
+
+            try
+            {
+                File.WriteAllText(GetSendSessionSnapshotPath(), JsonConvert.SerializeObject(snapshot), Encoding.UTF8);
+            }
+            catch
+            {
+            }
+        }
+
+        private void RestoreSendSessionSnapshot()
+        {
+            string snapshotPath = GetSendSessionSnapshotPath();
+            if (!File.Exists(snapshotPath))
+            {
+                return;
+            }
+
+            try
+            {
+                SendSessionSnapshot snapshot = JsonConvert.DeserializeObject<SendSessionSnapshot>(File.ReadAllText(snapshotPath, Encoding.UTF8));
+                if (snapshot == null || string.IsNullOrEmpty(snapshot.CurrentContent))
+                {
+                    DeleteSendSessionSnapshot();
+                    return;
+                }
+
+                RestoreSendSessionState(snapshot);
+                ShowFlowText("已恢复上次未完成的发文进度");
+            }
+            catch
+            {
+                DeleteSendSessionSnapshot();
+            }
+        }
+
+        private void RestoreSendSessionState(SendSessionSnapshot snapshot)
+        {
+            NewSendText.发文状态 = true;
+            NewSendText.SentId = snapshot.SentId;
+            NewSendText.标题 = snapshot.CurrentTitle ?? "";
+            NewSendText.文章全文 = snapshot.ArticleFullText ?? "";
+            NewSendText.发文全文 = snapshot.SendFullText ?? "";
+            NewSendText.类型 = snapshot.SendType ?? "";
+            NewSendText.单字乱序 = snapshot.SingleDisorder;
+            NewSendText.乱序全段不重复 = snapshot.NoRepeat;
+            NewSendText.字数 = snapshot.SendCount;
+            NewSendText.标记 = snapshot.SendMark;
+            NewSendText.已发段数 = snapshot.SentSegmentCount;
+            NewSendText.是否周期 = snapshot.IsCycle;
+            NewSendText.周期 = snapshot.CycleValue;
+            NewSendText.周期计数 = snapshot.CycleCounter > 0 ? snapshot.CycleCounter : snapshot.CycleValue;
+            NewSendText.ArticleSource = (NewSendText.ArticleSourceValue)snapshot.ArticleSource;
+            NewSendText.已发字数 = snapshot.SentCharCount;
+            NewSendText.是否自动 = snapshot.IsAuto;
+            NewSendText.词组发送分隔符 = string.IsNullOrEmpty(snapshot.PhraseSeparator) ? "，" : snapshot.PhraseSeparator;
+            NewSendText.词组乱序 = snapshot.PhraseDisorder;
+            NewSendText.词组 = snapshot.Phrases ?? new List<string>();
+            NewSendText.词组全文 = snapshot.AllPhrases ?? new List<string>();
+            NewSendText.trim = snapshot.Trim;
+            NewSendText.AutoCondition = snapshot.AutoCondition;
+            NewSendText.ConditionValue = new ConditionItems();
+            if (!string.IsNullOrEmpty(snapshot.ConditionValue))
+            {
+                NewSendText.ConditionValue.Parse(snapshot.ConditionValue);
+            }
+            NewSendText.AutoNo = (NewSendText.AutoNoValue)snapshot.AutoNo;
+
+            Glob.TempSegmentRecord.Clear();
+            if (snapshot.SegmentRecord != null && snapshot.SegmentRecord.Count > 0)
+            {
+                Glob.TempSegmentRecord.AddRange(snapshot.SegmentRecord);
+            }
+            Glob.SendCursor = snapshot.SendCursor;
+
+            this.timerTSend.Stop();
+            this.lblNowTime_.Text = "";
+            SetMatch(false);
+            LoadRestoredSendContent(snapshot.CurrentContent, snapshot.CurrentSegmentNum, snapshot.CurrentTitle);
+            RestoreSendInputProgress(snapshot.CurrentInput);
+        }
+
+        private void LoadRestoredSendContent(string content, int segmentNum, string title)
+        {
+            this.CleanSpeedPoints();
+            this.cmsDuanList.Items.Clear();
+            Glob.binput = true;
+
+            this.textBoxEx1.TextChanged -= new System.EventHandler(textBoxEx1_TextChanged);
+            this.textBoxEx1.Clear();
+            this.textBoxEx1.TextChanged += new System.EventHandler(textBoxEx1_TextChanged);
+
+            this.richTextBox1.SelectAll();
+            this.richTextBox1.SelectionBackColor = Theme.R1Back;
+            this.richTextBox1.Text = content;
+
+            Initialize(1);
+            Initialize(2);
+
+            this.textBoxEx1.ReadOnly = false;
+            Glob.CurSegmentNum = segmentNum > 0 ? segmentNum : 1;
+            this.lblDuan.Text = "第" + Glob.CurSegmentNum.ToString() + "段";
+            this.lblTitle.Text = string.IsNullOrEmpty(title) ? NewSendText.标题 : title;
+            GetInfo();
+        }
+
+        private void RestoreSendInputProgress(string input)
+        {
+            this.textBoxEx1.Focus();
+
+            if (string.IsNullOrEmpty(input) || this.richTextBox1.TextLength <= 1)
+            {
+                return;
+            }
+
+            int maxProgressLen = Math.Max(this.richTextBox1.TextLength - 1, 0);
+            if (input.Length > maxProgressLen)
+            {
+                input = input.Substring(0, maxProgressLen);
+            }
+
+            if (input.Length == 0)
+            {
+                return;
+            }
+
+            int todayTyping = Glob.todayTyping;
+            int totalTyping = Glob.TextLenAll;
+            int recordDays = Glob.TextRecDays;
+
+            this.textBoxEx1.Text = input;
+
+            Glob.todayTyping = todayTyping;
+            Glob.TextLenAll = totalTyping;
+            Glob.TextRecDays = recordDays;
+            this.labelHaveTyping.Text = Glob.todayTyping + "/" + 字数格式化(Glob.TextLenAll) + "/" + Glob.TextRecDays + "天";
+            LblHaveTypingChange();
+
+            timer1.Stop();
+            timer2.Stop();
+            timer3.Stop();
+            timer5.Stop();
+            timerLblTime.Stop();
+            allUsedTime = new TimeSpan();
+            recordUsedTime = new TimeSpan();
+            Glob.TypeUseTime = 0;
+            Glob.nowStart = DateTime.Now;
+
+            labelTimeFlys.Text = "00:00.00";
+            labelSpeeding.Text = "";
+            labelJjing.Text = "";
+            labelmcing.Text = "";
+            LblTimeFlash = false;
+            labelTimeFlys.ForeColor = Theme.SecondFC;
+            this.Text = Glob.Form;
+            isPause = true;
+
+            this.textBoxEx1.SelectionStart = this.textBoxEx1.TextLength;
+            this.textBoxEx1.ScrollToCaret();
         }
 
         void richTextBox1_FontChanged(object sender, EventArgs e)
@@ -3983,6 +4206,8 @@ namespace WindowsFormsApplication2
         #region 关闭后的设置
         private void CloseTyping(object sender, FormClosedEventArgs e)
         {
+            SaveSendSessionSnapshot();
+
             int tX = this.Location.X;//横坐标
             int tY = this.Location.Y;
             int tW = this.Size.Width;
@@ -5235,6 +5460,8 @@ namespace WindowsFormsApplication2
                 Glob.TempSegmentRecord.Clear();
                 Glob.SendCursor = 0;
             }
+
+            DeleteSendSessionSnapshot();
         }
 
         private void 停止发文ToolStripMenuItem1_Click(object sender, EventArgs e)
