@@ -252,8 +252,12 @@ namespace WindowsFormsApplication2
                 this.toolStripButton4.PerformClick();
             }
 
-            // 启动时最大化窗口
-            this.WindowState = FormWindowState.Maximized;
+            // 恢复上次退出时的窗口状态
+            bool isMaximized = !bool.TryParse(IniRead("窗口位置", "最大化", "True"), out bool maxVal) || maxVal;
+            if (isMaximized)
+            {
+                this.WindowState = FormWindowState.Maximized;
+            }
         }
 
 
@@ -3989,6 +3993,7 @@ namespace WindowsFormsApplication2
 
             IniWrite("窗口位置", "横", tX.ToString());
             IniWrite("窗口位置", "纵", tY.ToString());
+            IniWrite("窗口位置", "最大化", (this.WindowState == FormWindowState.Maximized).ToString());
             // 当宽度和高度均小于主监视器的工作区时才保存记录
             if (tW <= width && tH <= height)
             {
