@@ -177,7 +177,7 @@
             this.Name = "TypeAnalysis";
             this.ShowIcon = false;
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
-            this.Text = "跟打分析";
+            this.Text = "跟打报告";
             this.Load += new System.EventHandler(this.TypeAnalysis_Load);
             ((System.ComponentModel.ISupportInitialize)(this.dataGridView1)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.pic_analysis)).EndInit();

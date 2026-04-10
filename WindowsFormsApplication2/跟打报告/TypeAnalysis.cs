@@ -50,7 +50,22 @@ namespace WindowsFormsApplication2.跟打报告
             this.dataGridView1.Rows[0].DefaultCellStyle.BackColor = Color.FromArgb(64,128,128);
             this.dataGridView1.Rows[0].DefaultCellStyle.ForeColor = Color.White;
             ShowToTable();
+            ConfigureTableColumns();
             ShowToPic();
+        }
+
+        private void ConfigureTableColumns()
+        {
+            this.dataGridView1.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None;
+
+            this.序.AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells;
+            this.起点.AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells;
+            this.终点.AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells;
+            this.时间.AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells;
+            this.键数.AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells;
+
+            this.字符.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
+            this.字符.MinimumWidth = 56;
         }
 
         /// <summary>
@@ -87,7 +102,9 @@ namespace WindowsFormsApplication2.跟打报告
             {
                 initialheight = this.typeTextData.Length;
             }
-            Bitmap bmp = new Bitmap(this.pic_analysis.Width, 135 + initialheight + this.textHgData * 2);
+            int estimateHeight = 135 + initialheight + this.textHgData * 2;
+            int canvasHeight = Math.Max(estimateHeight + 80, 220 + this.typeTextData.Length * 2);
+            Bitmap bmp = new Bitmap(this.pic_analysis.Width, canvasHeight);
             Graphics g = Graphics.FromImage(bmp);
             g.Clear(Color.White); //清洗画布
             
@@ -232,22 +249,33 @@ namespace WindowsFormsApplication2.跟打报告
                 //    i += t_jump - 1;//跳过处理
                 //    t_jump = 0;
                // }
-                
+                 
                 t_nowX += t_text_width - t_splite_distance; //减为间隔
             }
             /* ====================================== ******** ======================================*/
 
             Font lastFont = new Font("Verdana", 9f);
+            int footerTop = t_nowY + t_distance + 12;
             // 跟打日期
             SizeF typeTimeSizeF = GetWH(g, typeTime, lastFont);
-            g.DrawString(typeTime, lastFont, Brushes.DimGray, p_Start_X, bmp.Height - typeTimeSizeF.Height - 3);
+            g.DrawString(typeTime, lastFont, Brushes.DimGray, p_Start_X, footerTop);
 
             //尾标
             string lastText = Glob.Form + "(" + this.verInstration + ")";
             SizeF lastTextSizeF = GetWH(g, lastText, lastFont);
-            g.DrawString(lastText, lastFont, Brushes.DimGray, bmp.Width - lastTextSizeF.Width, bmp.Height - lastTextSizeF.Height - 3);
+            g.DrawString(lastText, lastFont, Brushes.DimGray, bmp.Width - lastTextSizeF.Width - 3, footerTop);
+            int finalHeight = (int)Math.Ceiling(footerTop + Math.Max(typeTimeSizeF.Height, lastTextSizeF.Height) + 8);
+            if (finalHeight < bmp.Height)
+            {
+                Bitmap finalBmp = bmp.Clone(new Rectangle(0, 0, bmp.Width, finalHeight), bmp.PixelFormat);
+                g.Dispose();
+                bmp.Dispose();
+                bmp = finalBmp;
+                g = Graphics.FromImage(bmp);
+            }
             //给画布画上边框
             g.DrawRectangle(new Pen(Color.Green, 2), 1, 1, bmp.Width - 2, bmp.Height - 2);
+            g.Dispose();
             //显示出来
             this.pic_analysis.Height = bmp.Height;
             if (bmp.Height > 470)
