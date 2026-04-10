@@ -72,6 +72,7 @@ namespace WindowsFormsApplication2.History
             this.frm = frm1;
             InitializeComponent();
             this.PreviewRichTextBox.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
+            this.MonthCalendar.HigherViewRangeSelected += MonthCalendar_HigherViewRangeSelected;
             this.splitContainer1.Panel1.Resize += (sender, e) => UpdateTopPanelLayout();
         }
 
@@ -901,6 +902,11 @@ namespace WindowsFormsApplication2.History
 
         #region 选择日期
         private void MonthCalendar_DateSelected(object sender, DateRangeEventArgs e)
+        {
+            this.ShowDataFromDateRange(e.Start, e.End);
+        }
+
+        private void MonthCalendar_HigherViewRangeSelected(object sender, DateRangeEventArgs e)
         {
             this.ShowDataFromDateRange(e.Start, e.End);
         }

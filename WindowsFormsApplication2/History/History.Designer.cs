@@ -61,7 +61,7 @@
             System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle24 = new System.Windows.Forms.DataGridViewCellStyle();
             System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle25 = new System.Windows.Forms.DataGridViewCellStyle();
             System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle26 = new System.Windows.Forms.DataGridViewCellStyle();
-            this.MonthCalendar = new System.Windows.Forms.MonthCalendar();
+            this.MonthCalendar = new WindowsFormsApplication2.History.HistoryMonthCalendar();
             this.MonthCalendarContextMenuStrip = new System.Windows.Forms.ContextMenuStrip(this.components);
             this.DeleteDayToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.DeleteMonthToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -1088,7 +1088,7 @@
         }
 
         #endregion
-        private System.Windows.Forms.MonthCalendar MonthCalendar;
+        private HistoryMonthCalendar MonthCalendar;
         private System.Windows.Forms.GroupBox PreviewGroupBox;
         private System.Windows.Forms.RichTextBox PreviewRichTextBox;
         private System.Windows.Forms.SplitContainer splitContainer1;
