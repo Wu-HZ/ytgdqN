@@ -60,13 +60,50 @@ namespace WindowsFormsApplication2.History
         {
             this.frm = frm1;
             InitializeComponent();
+            this.PreviewRichTextBox.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
+            this.splitContainer1.Panel1.Resize += (sender, e) => UpdateTopPanelLayout();
         }
 
         private void History_Load(object sender, EventArgs e)
         {
             this.gridHandler = new HistoryDataGridHandler(this.dataGridView1);
             this.MonthCalendar.BoldedDates = Glob.ScoreHistory.GetAllScoreDates();
+            this.BeginInvoke((MethodInvoker)UpdateTopPanelLayout);
             ShowDataFromDate(DateTime.Now);
+        }
+
+        // 按日历实际尺寸重排顶部区域，避免高 DPI 下出现多余留白。
+        private void UpdateTopPanelLayout()
+        {
+            if (!this.IsHandleCreated || this.splitContainer1.Panel1.ClientSize.Width <= 0)
+            {
+                return;
+            }
+
+            const int outerPadding = 5;
+            const int controlSpacing = 5;
+            int top = this.MonthCalendar.Top;
+            int calendarHeight = this.MonthCalendar.Height;
+            int previewLeft = this.MonthCalendar.Right + controlSpacing;
+            int previewWidth = this.PreviewGroupBox.Width;
+            int chartLeft = previewLeft + previewWidth + controlSpacing;
+            int chartWidth = Math.Max(120, this.splitContainer1.Panel1.ClientSize.Width - chartLeft - outerPadding);
+            int toolbarTop = this.MonthCalendar.Bottom + controlSpacing;
+            int splitterDistance = toolbarTop + this.ToolPanel.Height + outerPadding;
+            int maxSplitterDistance = this.splitContainer1.Height - this.splitContainer1.Panel2MinSize - this.splitContainer1.SplitterWidth;
+
+            this.PreviewGroupBox.SetBounds(previewLeft, top, previewWidth, calendarHeight);
+            this.SpeedChart.SetBounds(chartLeft, top, chartWidth, calendarHeight);
+            this.ToolPanel.SetBounds(
+                outerPadding,
+                toolbarTop,
+                this.splitContainer1.Panel1.ClientSize.Width - outerPadding * 2 - 1,
+                this.ToolPanel.Height);
+
+            if (splitterDistance > 0 && splitterDistance <= maxSplitterDistance && this.splitContainer1.SplitterDistance != splitterDistance)
+            {
+                this.splitContainer1.SplitterDistance = splitterDistance;
+            }
         }
 
         /// <summary>

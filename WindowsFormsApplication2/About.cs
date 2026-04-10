@@ -27,6 +27,31 @@ namespace WindowsFormsApplication2
                 bitVal = " (32-bit)";
             }
             this.labelVersion.Text = "v" + Glob.Ver + bitVal;
+            AdjustDialogSize();
+        }
+
+        // 根据实际文本宽度扩展对话框，避免高 DPI 或字体差异导致右侧文字被截断。
+        private void AdjustDialogSize()
+        {
+            const int rightPadding = 24;
+            int bottomPadding = this.ClientSize.Height - button1.Bottom;
+            int requiredWidth = new Control[]
+            {
+                label2,
+                labelVersion,
+                lblInfo,
+                label4,
+                label3,
+                linkLabel1,
+                linkLabel2
+            }.Max(control => control.Right) + rightPadding;
+            int requiredHeight = Math.Max(button1.Bottom, linkLabel2.Bottom) + bottomPadding;
+
+            this.ClientSize = new Size(
+                Math.Max(this.ClientSize.Width, requiredWidth),
+                Math.Max(this.ClientSize.Height, requiredHeight));
+            button1.Left = (this.ClientSize.Width - button1.Width) / 2;
+            button1.Top = this.ClientSize.Height - bottomPadding - button1.Height;
         }
 
         private void Jump(string str)
@@ -47,6 +72,7 @@ namespace WindowsFormsApplication2
             var ts = DateTime.Now - Start;
             lblInfo.Text = string.Format("雨天跟打器从{0}发布至今已过去{1}天", Start.ToShortDateString(),
             ts.TotalDays.ToString("0"));
+            AdjustDialogSize();
         }
 
         #region 程序集特性访问器
