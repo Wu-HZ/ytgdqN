@@ -18,6 +18,11 @@ namespace WindowsFormsApplication2.History
         public DateTime Date { get; set; }
 
         /// <summary>
+        /// 结束时间
+        /// </summary>
+        public DateTime EndDate { get; set; }
+
+        /// <summary>
         /// 标题
         /// </summary>
         public string Title { get; set; }

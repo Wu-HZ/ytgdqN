@@ -154,6 +154,39 @@ namespace WindowsFormsApplication2.Storage
             return myScore;
         }
 
+        private string BuildScoreTimeRangeCondition(DateTime startDate, DateTime endDate)
+        {
+            DateTime rangeStart = startDate.Date;
+            DateTime rangeEnd = endDate.Date;
+            if (rangeStart > rangeEnd)
+            {
+                DateTime temp = rangeStart;
+                rangeStart = rangeEnd;
+                rangeEnd = temp;
+            }
+
+            string startText = rangeStart.ToString("yyyy-MM-dd'T'00:00:00", CultureInfo.InvariantCulture);
+            string endText = rangeEnd.AddDays(1).ToString("yyyy-MM-dd'T'00:00:00", CultureInfo.InvariantCulture);
+            return $"score_time>='{startText}' AND score_time<'{endText}'";
+        }
+
+        /// <summary>
+        /// 根据日期区间获取成绩
+        /// </summary>
+        /// <param name="startDate"></param>
+        /// <param name="endDate"></param>
+        /// <param name="start"></param>
+        /// <param name="limit"></param>
+        /// <returns></returns>
+        public StorageDataSet.ScoreDataTable GetScoreFromDateRange(DateTime startDate, DateTime endDate, int start, int limit)
+        {
+            this.cmd.CommandText = $"SELECT * FROM score WHERE {this.BuildScoreTimeRangeCondition(startDate, endDate)} LIMIT {limit} OFFSET {start}";
+            SQLiteDataAdapter adapter = new SQLiteDataAdapter(this.cmd);
+            StorageDataSet.ScoreDataTable myScore = new StorageDataSet.ScoreDataTable();
+            adapter.Fill(myScore);
+            return myScore;
+        }
+
         /// <summary>
         /// 根据日期获取成绩数量
         /// </summary>
@@ -162,6 +195,24 @@ namespace WindowsFormsApplication2.Storage
         public int GetScoreCountFromDate(DateTime date)
         {
             this.cmd.CommandText = $"SELECT COUNT(1) FROM score WHERE score_time LIKE '{date:yyyy-MM-dd}%'";
+            object readNum = this.cmd.ExecuteScalar();
+
+            if (readNum == null)
+            {
+                return 0;
+            }
+            return Convert.ToInt32(readNum);
+        }
+
+        /// <summary>
+        /// 根据日期区间获取成绩数量
+        /// </summary>
+        /// <param name="startDate"></param>
+        /// <param name="endDate"></param>
+        /// <returns></returns>
+        public int GetScoreCountFromDateRange(DateTime startDate, DateTime endDate)
+        {
+            this.cmd.CommandText = $"SELECT COUNT(1) FROM score WHERE {this.BuildScoreTimeRangeCondition(startDate, endDate)}";
             object readNum = this.cmd.ExecuteScalar();
 
             if (readNum == null)
@@ -363,6 +414,21 @@ namespace WindowsFormsApplication2.Storage
         public void DeleteScoreItemByDate(string date)
         {
             this.cmd.CommandText = $"DELETE FROM score WHERE score_time LIKE '{date}%'";
+            int count = this.cmd.ExecuteNonQuery();
+            if (count > 20)
+            {
+                this.CleanDisk();
+            }
+        }
+
+        /// <summary>
+        /// 根据日期区间删除记录
+        /// </summary>
+        /// <param name="startDate"></param>
+        /// <param name="endDate"></param>
+        public void DeleteScoreItemByDateRange(DateTime startDate, DateTime endDate)
+        {
+            this.cmd.CommandText = $"DELETE FROM score WHERE {this.BuildScoreTimeRangeCondition(startDate, endDate)}";
             int count = this.cmd.ExecuteNonQuery();
             if (count > 20)
             {

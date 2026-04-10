@@ -83,6 +83,7 @@
             this.SearchButton = new System.Windows.Forms.Button();
             this.SearchTextBox = new System.Windows.Forms.TextBox();
             this.ResultLabel = new System.Windows.Forms.Label();
+            this.TrendChartCheckBox = new System.Windows.Forms.CheckBox();
             this.SpeedChart = new System.Windows.Forms.DataVisualization.Charting.Chart();
             this.dataGridView1 = new System.Windows.Forms.DataGridView();
             this.HistoryContextMenuStrip = new System.Windows.Forms.ContextMenuStrip(this.components);
@@ -149,7 +150,7 @@
             this.MonthCalendar.ContextMenuStrip = this.MonthCalendarContextMenuStrip;
             this.MonthCalendar.Font = new System.Drawing.Font("微软雅黑", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
             this.MonthCalendar.Location = new System.Drawing.Point(5, 4);
-            this.MonthCalendar.MaxSelectionCount = 1;
+            this.MonthCalendar.MaxSelectionCount = 3660;
             this.MonthCalendar.MinDate = new System.DateTime(2000, 1, 1, 0, 0, 0, 0);
             this.MonthCalendar.Name = "MonthCalendar";
             this.MonthCalendar.TabIndex = 0;
@@ -263,6 +264,7 @@
             this.ToolPanel.Controls.Add(this.SearchButton);
             this.ToolPanel.Controls.Add(this.SearchTextBox);
             this.ToolPanel.Controls.Add(this.ResultLabel);
+            this.ToolPanel.Controls.Add(this.TrendChartCheckBox);
             this.ToolPanel.Location = new System.Drawing.Point(5, 190);
             this.ToolPanel.Name = "ToolPanel";
             this.ToolPanel.Size = new System.Drawing.Size(1173, 25);
@@ -403,6 +405,22 @@
             this.ResultLabel.TabIndex = 0;
             this.ResultLabel.Text = "label1";
             this.toolTip1.SetToolTip(this.ResultLabel, "所展示的数据类别");
+            // 
+            // TrendChartCheckBox
+            // 
+            this.TrendChartCheckBox.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.TrendChartCheckBox.AutoSize = true;
+            this.TrendChartCheckBox.Checked = true;
+            this.TrendChartCheckBox.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.TrendChartCheckBox.Location = new System.Drawing.Point(1060, 5);
+            this.TrendChartCheckBox.Name = "TrendChartCheckBox";
+            this.TrendChartCheckBox.Size = new System.Drawing.Size(72, 16);
+            this.TrendChartCheckBox.TabIndex = 12;
+            this.TrendChartCheckBox.TabStop = false;
+            this.TrendChartCheckBox.Text = "长期趋势";
+            this.toolTip1.SetToolTip(this.TrendChartCheckBox, "勾选后显示当前筛选结果的长期趋势，取消后显示当前选中记录的单次速度曲线");
+            this.TrendChartCheckBox.UseVisualStyleBackColor = true;
+            this.TrendChartCheckBox.CheckedChanged += new System.EventHandler(this.TrendChartCheckBox_CheckedChanged);
             // 
             // SpeedChart
             // 
@@ -1088,6 +1106,7 @@
         private System.Windows.Forms.Label ResultLabel;
         private System.Windows.Forms.Button SearchButton;
         private System.Windows.Forms.TextBox SearchTextBox;
+        private System.Windows.Forms.CheckBox TrendChartCheckBox;
         private System.Windows.Forms.ToolTip toolTip1;
         private System.Windows.Forms.ToolStripMenuItem SearchTitleToolStripMenuItem;
         private System.Windows.Forms.ToolStripSeparator toolStripSeparator3;

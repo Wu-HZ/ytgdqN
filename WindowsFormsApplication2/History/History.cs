@@ -6,6 +6,7 @@ using System.Drawing;
 using System.Linq;
 using System.Text;
 using System.Windows.Forms;
+using System.Windows.Forms.DataVisualization.Charting;
 using WindowsFormsApplication2.Storage;
 using WindowsFormsApplication2.Category;
 
@@ -17,6 +18,11 @@ namespace WindowsFormsApplication2.History
         /// 当前成绩数据
         /// </summary>
         private StorageDataSet.ScoreDataTable currentScoreData = new StorageDataSet.ScoreDataTable();
+
+        /// <summary>
+        /// 当前筛选结果对应的图表数据
+        /// </summary>
+        private StorageDataSet.ScoreDataTable chartScoreData = new StorageDataSet.ScoreDataTable();
 
         /// <summary>
         /// 表格操作器
@@ -40,6 +46,11 @@ namespace WindowsFormsApplication2.History
         /// 当前页
         /// </summary>
         private int currentPage = 0;
+
+        /// <summary>
+        /// 是否展示长期趋势图
+        /// </summary>
+        private bool showTrendChart = true;
 
         /// <summary>
         /// 总数据量
@@ -69,7 +80,8 @@ namespace WindowsFormsApplication2.History
             this.gridHandler = new HistoryDataGridHandler(this.dataGridView1);
             this.MonthCalendar.BoldedDates = Glob.ScoreHistory.GetAllScoreDates();
             this.BeginInvoke((MethodInvoker)UpdateTopPanelLayout);
-            ShowDataFromDate(DateTime.Now);
+            this.showTrendChart = this.TrendChartCheckBox.Checked;
+            ShowDataFromDateRange(DateTime.Now, DateTime.Now);
         }
 
         // 按日历实际尺寸重排顶部区域，避免高 DPI 下出现多余留白。
@@ -197,9 +209,11 @@ namespace WindowsFormsApplication2.History
         {
             this.dataGridView1.Rows.Clear();
             this.currentScoreData.Clear();
+            this.chartScoreData.Clear();
             this.PreviewGroupBox.Text = "文段预览";
             this.PreviewRichTextBox.Text = "";
             this.SpeedChart.Series[0].Points.Clear();
+            this.SpeedChart.Titles.Clear();
             this.dataGridView1.Enabled = false;
         }
 
@@ -212,11 +226,30 @@ namespace WindowsFormsApplication2.History
 
         private void ShowDataFromDate(DateTime date)
         {
+            this.ShowDataFromDateRange(date, date);
+        }
+
+        private void ShowDataFromDateRange(DateTime startDate, DateTime endDate)
+        {
             this.ClearGridData();
+            if (startDate.Date > endDate.Date)
+            {
+                DateTime temp = startDate;
+                startDate = endDate;
+                endDate = temp;
+            }
+
             this.dataType.Cur = "Date";
-            this.dataType.Date = date;
-            this.ResultLabel.Text = "日期：" + date.ToString("d");
-            this.totalCount = Glob.ScoreHistory.GetScoreCountFromDate(date);
+            this.dataType.Date = startDate.Date;
+            this.dataType.EndDate = endDate.Date;
+
+            bool isSingleDate = this.dataType.Date == this.dataType.EndDate;
+            this.ResultLabel.Text = isSingleDate
+                ? "日期：" + this.dataType.Date.ToString("d")
+                : "日期：" + this.dataType.Date.ToString("d") + " - " + this.dataType.EndDate.ToString("d");
+            this.totalCount = isSingleDate
+                ? Glob.ScoreHistory.GetScoreCountFromDate(this.dataType.Date)
+                : Glob.ScoreHistory.GetScoreCountFromDateRange(this.dataType.Date, this.dataType.EndDate);
 
             if (this.TotalPage > 0)
             {
@@ -230,9 +263,13 @@ namespace WindowsFormsApplication2.History
             this.UpdateGridToolBar();
             if (this.totalCount > 0)
             {
-                this.currentScoreData = Glob.ScoreHistory.GetScoreFromDate(date, 0, PageSize);
+                this.currentScoreData = isSingleDate
+                    ? Glob.ScoreHistory.GetScoreFromDate(this.dataType.Date, 0, PageSize)
+                    : Glob.ScoreHistory.GetScoreFromDateRange(this.dataType.Date, this.dataType.EndDate, 0, PageSize);
+                this.ReloadChartScoreData();
             }
             this.ShowGridData();
+            this.RefreshChart();
         }
 
         private void ShowDataFromTitle(string title)
@@ -240,6 +277,7 @@ namespace WindowsFormsApplication2.History
             this.ClearGridData();
             this.dataType.Cur = "Title";
             this.dataType.Title = title;
+            this.dataType.EndDate = this.dataType.Date;
             this.ResultLabel.Text = "标题：" + title;
             this.totalCount = Glob.ScoreHistory.GetScoreCountFromTitle(title);
 
@@ -256,8 +294,10 @@ namespace WindowsFormsApplication2.History
             if (this.totalCount > 0)
             {
                 this.currentScoreData = Glob.ScoreHistory.GetScoreFromTitle(title, 0, PageSize);
+                this.ReloadChartScoreData();
             }
             this.ShowGridData();
+            this.RefreshChart();
         }
 
         private void ShowDataFromSubTitle(string title)
@@ -265,6 +305,7 @@ namespace WindowsFormsApplication2.History
             this.ClearGridData();
             this.dataType.Cur = "SubTitle";
             this.dataType.SubTitle = title;
+            this.dataType.EndDate = this.dataType.Date;
             this.ResultLabel.Text = "搜索标题：" + title;
             this.totalCount = Glob.ScoreHistory.GetScoreCountFromSubTitle(title);
 
@@ -281,8 +322,10 @@ namespace WindowsFormsApplication2.History
             if (this.totalCount > 0)
             {
                 this.currentScoreData = Glob.ScoreHistory.GetScoreFromSubTitle(title, 0, PageSize);
+                this.ReloadChartScoreData();
             }
             this.ShowGridData();
+            this.RefreshChart();
         }
 
         private void ShowDataFromSegment(long id)
@@ -290,6 +333,7 @@ namespace WindowsFormsApplication2.History
             this.ClearGridData();
             this.dataType.Cur = "SegmentId";
             this.dataType.SegmentId = id;
+            this.dataType.EndDate = this.dataType.Date;
             this.ResultLabel.Text = "文段ID：" + id.ToString();
             this.totalCount = Glob.ScoreHistory.GetScoreCountFromSegmentId(id);
 
@@ -306,43 +350,238 @@ namespace WindowsFormsApplication2.History
             if (this.totalCount > 0)
             {
                 this.currentScoreData = Glob.ScoreHistory.GetScoreFromSegmentId(id, 0, PageSize);
+                this.ReloadChartScoreData();
             }
             this.ShowGridData();
+            this.RefreshChart();
+        }
+
+        private void ReloadChartScoreData()
+        {
+            this.chartScoreData.Clear();
+            if (this.totalCount <= 0)
+            {
+                return;
+            }
+
+            switch (this.dataType.Cur)
+            {
+                case "Date":
+                    this.chartScoreData = this.dataType.Date == this.dataType.EndDate
+                        ? Glob.ScoreHistory.GetScoreFromDate(this.dataType.Date, 0, this.totalCount)
+                        : Glob.ScoreHistory.GetScoreFromDateRange(this.dataType.Date, this.dataType.EndDate, 0, this.totalCount);
+                    break;
+                case "Title":
+                    this.chartScoreData = Glob.ScoreHistory.GetScoreFromTitle(this.dataType.Title, 0, this.totalCount);
+                    break;
+                case "SubTitle":
+                    this.chartScoreData = Glob.ScoreHistory.GetScoreFromSubTitle(this.dataType.SubTitle, 0, this.totalCount);
+                    break;
+                case "SegmentId":
+                    this.chartScoreData = Glob.ScoreHistory.GetScoreFromSegmentId(this.dataType.SegmentId, 0, this.totalCount);
+                    break;
+            }
+        }
+
+        private double GetDisplaySpeed(StorageDataSet.ScoreRow scoreRow)
+        {
+            string[] curSpeed = scoreRow["speed"].ToString().Split('/');
+            double speedVal = double.Parse(curSpeed[0]);
+            if (CategoryHandler.IsEn((Glob.CategoryValue)scoreRow["category"]))
+            {
+                speedVal *= 5;
+            }
+            return speedVal;
+        }
+
+        private void ClearPreview()
+        {
+            this.PreviewGroupBox.Text = "文段预览";
+            this.PreviewRichTextBox.Text = "";
+        }
+
+        private void UpdatePreview(DataGridViewRow curRow)
+        {
+            if (curRow == null || curRow.Cells.Count < 2)
+            {
+                this.ClearPreview();
+                return;
+            }
+
+            string scoreTime = curRow.Cells[1].Value == null ? "" : curRow.Cells[1].Value.ToString();
+            if (string.IsNullOrEmpty(scoreTime))
+            {
+                this.ClearPreview();
+                return;
+            }
+
+            StorageDataSet.ScoreRow sd = StorageDataSet.GetScoreRowFromTime(this.currentScoreData, scoreTime);
+            if (sd == null)
+            {
+                this.ClearPreview();
+                return;
+            }
+
+            long segmentId = (long)sd["segment_id"];
+            double diff = (double)sd["difficulty"];
+            this.PreviewGroupBox.Text = "文段预览 <" + this.frm.DiffDict.DiffText(diff) + "> [ID=" + segmentId.ToString() + "]";
+            this.PreviewRichTextBox.Text = Glob.ScoreHistory.GetContentFromSegmentId(segmentId);
+        }
+
+        private void ConfigureTrendChartStyle(string labelFormat, bool showMarkers)
+        {
+            Series series = this.SpeedChart.Series[0];
+            Axis axisX = this.SpeedChart.ChartAreas[0].AxisX;
+            Axis axisY = this.SpeedChart.ChartAreas[0].AxisY;
+
+            series.ChartType = SeriesChartType.FastLine;
+            series.XValueType = ChartValueType.DateTime;
+            series.MarkerStyle = showMarkers ? MarkerStyle.Circle : MarkerStyle.None;
+            series.MarkerSize = showMarkers ? 4 : 0;
+            axisX.Minimum = double.NaN;
+            axisX.Maximum = double.NaN;
+            axisX.Interval = 0;
+            axisX.IntervalType = DateTimeIntervalType.Auto;
+            axisX.LabelStyle.Format = labelFormat;
+            axisX.LabelStyle.Angle = showMarkers ? -45 : 0;
+            axisX.LabelStyle.Interval = 0;
+            axisX.LabelStyle.IntervalType = DateTimeIntervalType.Auto;
+            axisX.IsMarginVisible = true;
+            axisY.Minimum = double.NaN;
+            axisY.Maximum = double.NaN;
+        }
+
+        private void ConfigureSingleChartStyle()
+        {
+            Series series = this.SpeedChart.Series[0];
+            Axis axisX = this.SpeedChart.ChartAreas[0].AxisX;
+            Axis axisY = this.SpeedChart.ChartAreas[0].AxisY;
+
+            series.ChartType = SeriesChartType.SplineArea;
+            series.XValueType = ChartValueType.Auto;
+            series.MarkerStyle = MarkerStyle.None;
+            series.MarkerSize = 0;
+            axisX.LabelStyle.Format = "";
+            axisX.LabelStyle.Angle = 0;
+            axisX.LabelStyle.Interval = 0;
+            axisX.LabelStyle.IntervalType = DateTimeIntervalType.Number;
+            axisX.IntervalType = DateTimeIntervalType.Number;
+            axisX.Minimum = 1D;
+            axisX.Maximum = double.NaN;
+            axisY.Minimum = double.NaN;
+            axisY.Maximum = double.NaN;
+        }
+
+        private string GetTrendAxisFormat(DateTime startTime, DateTime endTime)
+        {
+            if (startTime.Date == endTime.Date)
+            {
+                return "HH:mm";
+            }
+
+            if (startTime.Year == endTime.Year)
+            {
+                return "MM-dd";
+            }
+
+            return "yy-MM";
+        }
+
+        private void ShowTrendChart()
+        {
+            this.SpeedChart.Series[0].Points.Clear();
+            this.SpeedChart.Titles.Clear();
+            this.SpeedChart.Titles.Add("速度趋势");
+
+            if (this.chartScoreData.Count == 0)
+            {
+                return;
+            }
+
+            List<StorageDataSet.ScoreRow> orderedRows = this.chartScoreData
+                .Cast<StorageDataSet.ScoreRow>()
+                .OrderBy(row => Convert.ToDateTime(row["score_time"]))
+                .ToList();
+            string labelFormat = this.GetTrendAxisFormat(
+                Convert.ToDateTime(orderedRows[0]["score_time"]),
+                Convert.ToDateTime(orderedRows[orderedRows.Count - 1]["score_time"]));
+            bool showMarkers = orderedRows.Count <= 30;
+            this.ConfigureTrendChartStyle(labelFormat, showMarkers);
+
+            double minSpeed = double.MaxValue;
+            foreach (StorageDataSet.ScoreRow row in orderedRows)
+            {
+                DateTime scoreTime = Convert.ToDateTime(row["score_time"]);
+                double speedVal = this.GetDisplaySpeed(row);
+                DataPoint point = new DataPoint();
+                point.SetValueXY(scoreTime, speedVal);
+                point.ToolTip = scoreTime.ToString("yyyy-MM-dd HH:mm:ss") + " 速度 " + speedVal.ToString("0.00");
+                this.SpeedChart.Series[0].Points.Add(point);
+                if (speedVal < minSpeed)
+                {
+                    minSpeed = speedVal;
+                }
+            }
+
+            if (minSpeed < double.MaxValue)
+            {
+                this.SpeedChart.ChartAreas[0].AxisY.Minimum = Math.Max(0, Math.Floor(minSpeed / 10.0) * 10.0);
+            }
+        }
+
+        private void ShowSelectedCurveChart(DataGridViewRow curRow)
+        {
+            this.SpeedChart.Series[0].Points.Clear();
+            this.SpeedChart.Titles.Clear();
+            this.SpeedChart.Titles.Add("单次速度曲线");
+            this.ConfigureSingleChartStyle();
+
+            if (curRow == null || curRow.Cells.Count < 2)
+            {
+                return;
+            }
+
+            string scoreTime = curRow.Cells[1].Value == null ? "" : curRow.Cells[1].Value.ToString();
+            if (string.IsNullOrEmpty(scoreTime))
+            {
+                return;
+            }
+
+            string adv = Glob.ScoreHistory.GetAdvancedDataFromTime(scoreTime, "curve");
+            if (string.IsNullOrEmpty(adv))
+            {
+                return;
+            }
+
+            double[] advCurve = Array.ConvertAll(adv.Split('|'), s => double.Parse(s));
+            foreach (double ce in advCurve)
+            {
+                this.SpeedChart.Series[0].Points.AddY(ce);
+            }
+
+            this.SpeedChart.ChartAreas[0].AxisY.Minimum = (int)(advCurve.Min() / 20) * 10;
+            this.SpeedChart.ChartAreas[0].AxisX.Interval = Math.Max(1, advCurve.Length / 5);
+        }
+
+        private void RefreshChart()
+        {
+            if (this.showTrendChart)
+            {
+                this.ShowTrendChart();
+            }
+            else
+            {
+                this.ShowSelectedCurveChart(this.dataGridView1.CurrentRow);
+            }
         }
 
         private void HistorySelectionChanged(object sender, EventArgs e)
         {
             DataGridViewRow curRow = (sender as DataGridView).CurrentRow;
-            string scoreTime = curRow.Cells[1].Value.ToString();
-            this.SpeedChart.Series[0].Points.Clear();
-            if (string.IsNullOrEmpty(scoreTime))
+            this.UpdatePreview(curRow);
+            if (!this.showTrendChart)
             {
-                //* 清空文段预览内容
-                this.PreviewGroupBox.Text = "文段预览";
-                this.PreviewRichTextBox.Text = "";
-            }
-            else
-            {
-                string adv = Glob.ScoreHistory.GetAdvancedDataFromTime(scoreTime, "curve");
-                if (!string.IsNullOrEmpty(adv))
-                {
-                    double[] advCurve = Array.ConvertAll(adv.Split('|'), s => double.Parse(s));
-                    foreach (double ce in advCurve)
-                    {
-                        this.SpeedChart.Series[0].Points.AddY(ce);
-                    }
-                    this.SpeedChart.ChartAreas[0].AxisY.Minimum = (int)(advCurve.Min() / 20) * 10;
-                    this.SpeedChart.ChartAreas[0].AxisX.Interval = advCurve.Length / 5;
-                }
-
-                StorageDataSet.ScoreRow sd = StorageDataSet.GetScoreRowFromTime(currentScoreData, scoreTime);
-                if (sd != null)
-                {
-                    long segmentId = (long)sd["segment_id"];
-                    double diff = (double)sd["difficulty"];
-                    this.PreviewGroupBox.Text = "文段预览 <" + frm.DiffDict.DiffText(diff) + "> [ID=" + segmentId.ToString() + "]"; 
-                    this.PreviewRichTextBox.Text = Glob.ScoreHistory.GetContentFromSegmentId(segmentId);
-                }
+                this.ShowSelectedCurveChart(curRow);
             }
         }
 
@@ -450,7 +689,9 @@ namespace WindowsFormsApplication2.History
             switch (this.dataType.Cur)
             {
                 case "Date":
-                    this.currentScoreData = Glob.ScoreHistory.GetScoreFromDate(this.dataType.Date, (pageNum - 1) * PageSize, PageSize);
+                    this.currentScoreData = this.dataType.Date == this.dataType.EndDate
+                        ? Glob.ScoreHistory.GetScoreFromDate(this.dataType.Date, (pageNum - 1) * PageSize, PageSize)
+                        : Glob.ScoreHistory.GetScoreFromDateRange(this.dataType.Date, this.dataType.EndDate, (pageNum - 1) * PageSize, PageSize);
                     break;
                 case "Title":
                     this.currentScoreData = Glob.ScoreHistory.GetScoreFromTitle(this.dataType.Title, (pageNum - 1) * PageSize, PageSize);
@@ -462,7 +703,9 @@ namespace WindowsFormsApplication2.History
                     this.currentScoreData = Glob.ScoreHistory.GetScoreFromSegmentId(this.dataType.SegmentId, (pageNum - 1) * PageSize, PageSize);
                     break;
             }
+            this.ReloadChartScoreData();
             this.ShowGridData();
+            this.RefreshChart();
         }
         #endregion
 
@@ -576,7 +819,9 @@ namespace WindowsFormsApplication2.History
                         switch (this.dataType.Cur)
                         {
                             case "Date":
-                                this.totalCount = Glob.ScoreHistory.GetScoreCountFromDate(this.dataType.Date);
+                                this.totalCount = this.dataType.Date == this.dataType.EndDate
+                                    ? Glob.ScoreHistory.GetScoreCountFromDate(this.dataType.Date)
+                                    : Glob.ScoreHistory.GetScoreCountFromDateRange(this.dataType.Date, this.dataType.EndDate);
                                 break;
                             case "Title":
                                 this.totalCount = Glob.ScoreHistory.GetScoreCountFromTitle(this.dataType.Title);
@@ -657,7 +902,7 @@ namespace WindowsFormsApplication2.History
         #region 选择日期
         private void MonthCalendar_DateSelected(object sender, DateRangeEventArgs e)
         {
-            this.ShowDataFromDate(e.Start);
+            this.ShowDataFromDateRange(e.Start, e.End);
         }
         #endregion
 
@@ -666,11 +911,19 @@ namespace WindowsFormsApplication2.History
         {
             if (e.Button == MouseButtons.Right)
             {
-                if (this.dataType.Date == null)
+                if (this.dataType.Date == default(DateTime))
                 {
                     this.dataType.Date = DateTime.Now;
+                    this.dataType.EndDate = this.dataType.Date;
                 }
-                this.DeleteDayToolStripMenuItem.Text = "删除" + this.dataType.Date.ToString("d") + "的记录";
+                if (this.dataType.Date != this.dataType.EndDate)
+                {
+                    this.DeleteDayToolStripMenuItem.Text = "删除所选区间的记录";
+                }
+                else
+                {
+                    this.DeleteDayToolStripMenuItem.Text = "删除" + this.dataType.Date.ToString("d") + "的记录";
+                }
                 this.DeleteMonthToolStripMenuItem.Text = "删除" + this.dataType.Date.ToString("Y") + "的记录";
                 this.DeleteYearToolStripMenuItem.Text = "删除" + this.dataType.Date.ToString("yyyy") + "年的记录";
             }
@@ -684,11 +937,20 @@ namespace WindowsFormsApplication2.History
         {
             string dateTip = "";
             string dateVal = "";
+            bool isRangeDelete = false;
             switch (_type)
             {
                 case "day":
-                    dateTip = this.dataType.Date.ToString("d");
-                    dateVal = this.dataType.Date.ToString("d");
+                    if (this.dataType.Date != this.dataType.EndDate)
+                    {
+                        isRangeDelete = true;
+                        dateTip = this.dataType.Date.ToString("d") + " - " + this.dataType.EndDate.ToString("d");
+                    }
+                    else
+                    {
+                        dateTip = this.dataType.Date.ToString("d");
+                        dateVal = this.dataType.Date.ToString("d");
+                    }
                     break;
                 case "month":
                     dateTip = this.dataType.Date.ToString("Y");
@@ -700,18 +962,32 @@ namespace WindowsFormsApplication2.History
                     break;
             }
             
-            if (dateVal != "")
+            if (isRangeDelete || dateVal != "")
             {
                 switch (MessageBox.Show("确认删除 " + dateTip + " 的所有记录吗？", "删除询问", MessageBoxButtons.YesNo))
                 {
                     case DialogResult.Yes:
-                        Glob.ScoreHistory.DeleteScoreItemByDate(dateVal);
-                        this.ShowDataFromDate(this.dataType.Date);
+                        if (isRangeDelete)
+                        {
+                            Glob.ScoreHistory.DeleteScoreItemByDateRange(this.dataType.Date, this.dataType.EndDate);
+                            this.ShowDataFromDateRange(this.dataType.Date, this.dataType.EndDate);
+                        }
+                        else
+                        {
+                            Glob.ScoreHistory.DeleteScoreItemByDate(dateVal);
+                            this.ShowDataFromDate(this.dataType.Date);
+                        }
                         break;
                     case DialogResult.No:
                         break;
                 }
             }
+        }
+
+        private void TrendChartCheckBox_CheckedChanged(object sender, EventArgs e)
+        {
+            this.showTrendChart = this.TrendChartCheckBox.Checked;
+            this.RefreshChart();
         }
 
         private void DeleteDayToolStripMenuItem_Click(object sender, EventArgs e)
