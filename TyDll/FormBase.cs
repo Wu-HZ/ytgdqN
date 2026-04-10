@@ -97,17 +97,28 @@ namespace TyDll
         [Description("指定窗体窗口如何显示")]
         public virtual new FormWindowState WindowState
         {
-            get { return this._windowState; }
+            get
+            {
+                if (base.WindowState == FormWindowState.Minimized)
+                {
+                    return FormWindowState.Minimized;
+                }
+
+                return this._windowState;
+            }
             set
             {
+                if (value == FormWindowState.Minimized)
+                {
+                    base.WindowState = FormWindowState.Minimized;
+                    return;
+                }
+
                 this._windowState = value;
                 switch (this._windowState)
                 {
                     case FormWindowState.Normal:
                         base.WindowState = FormWindowState.Normal;
-                        break;
-                    case FormWindowState.Minimized:
-                        base.WindowState = FormWindowState.Minimized;
                         break;
                     case FormWindowState.Maximized:
                         this._formSize = this.Size;
@@ -143,14 +154,30 @@ namespace TyDll
         {
             get
             {
-                if (!this._isTransfer)
-                    return base.CreateParams;
-                else
+                CreateParams param = base.CreateParams;
+
+                if (this._isTransfer)
                 {
-                    CreateParams param = base.CreateParams;
-                    param.ExStyle = 0x00080000;
-                    return param;
+                    param.ExStyle |= 0x00080000;
                 }
+
+                if (this.ShowInTaskbar)
+                {
+                    switch (this._sysButton)
+                    {
+                        case ESysButton.Normal:
+                            param.Style |= (int)(WindowStyle.WS_SYSMENU | WindowStyle.WS_MINIMIZEBOX | WindowStyle.WS_MAXIMIZEBOX);
+                            break;
+                        case ESysButton.Close_Mini:
+                            param.Style |= (int)(WindowStyle.WS_SYSMENU | WindowStyle.WS_MINIMIZEBOX);
+                            break;
+                        case ESysButton.Close:
+                            param.Style |= (int)WindowStyle.WS_SYSMENU;
+                            break;
+                    }
+                }
+
+                return param;
             }
         }
         /// <summary>
