@@ -2509,6 +2509,10 @@ namespace WindowsFormsApplication2
                     }
                     Glob.Textjj = jj;
                     Glob.Textmc = mc;
+
+                    // 保存上一轮的报告快照，避免重打或自动发下一段后报告被清空
+                    SaveLastTypeReportSnapshot(DateTime.Now, Glob.TextSpeed.ToString("0.00"));
+
                     //击键数据排列
                     int j = (int)jj;
                     if (j > 3 && j < 12)
@@ -3942,6 +3946,37 @@ namespace WindowsFormsApplication2
                 this.lblspeedcheck.Text = "时间";
             }
             //GC.Collect();
+        }
+
+        private static List<TypeDate> CloneTypeReport(List<TypeDate> source)
+        {
+            return source.Select(item => new TypeDate
+            {
+                Index = item.Index,
+                Start = item.Start,
+                End = item.End,
+                Length = item.Length,
+                NowTime = item.NowTime,
+                TotalTime = item.TotalTime,
+                Tick = item.Tick,
+                TotalTick = item.TotalTick,
+            }).ToList();
+        }
+
+        private void SaveLastTypeReportSnapshot(DateTime reportTime, string reportSpeed)
+        {
+            if (Glob.TypeReport.Count == 0 || string.IsNullOrEmpty(Glob.TypeText))
+            {
+                return;
+            }
+
+            Glob.LastTypeReport = CloneTypeReport(Glob.TypeReport);
+            Glob.LastTypeText = Glob.TypeText;
+            Glob.LastTypeSpeed = reportSpeed;
+            Glob.LastTypeHg = Glob.TextHg;
+            Glob.LastTypeTime = reportTime;
+            Glob.LastTypeCategory = Glob.Category;
+            Glob.LastTypeInstration = Glob.Instration;
         }
 
         [DllImport("User32")]
@@ -6537,7 +6572,41 @@ namespace WindowsFormsApplication2
         #region 跟打报告
         private void 跟打报告ToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            WindowsFormsApplication2.跟打报告.TypeAnalysis tya = new 跟打报告.TypeAnalysis(Glob.TextTime.ToString("G"), Glob.TypeReport, Glob.TypeText, Glob.TextSpeed.ToString("0.00"), Glob.TextHg, Glob.Category, Glob.Instration);
+            List<TypeDate> reportData;
+            string reportText;
+            string reportSpeed;
+            int reportHg;
+            Glob.CategoryValue reportCategory;
+            string reportInstration;
+            DateTime reportTime;
+
+            if (Glob.TypeReport.Count > 0 && !string.IsNullOrEmpty(Glob.TypeText))
+            {
+                reportData = CloneTypeReport(Glob.TypeReport);
+                reportText = Glob.TypeText;
+                reportSpeed = Glob.TextSpeed.ToString("0.00");
+                reportHg = Glob.TextHg;
+                reportCategory = Glob.Category;
+                reportInstration = Glob.Instration;
+                reportTime = Glob.TextTime == default ? DateTime.Now : Glob.TextTime;
+            }
+            else if (Glob.LastTypeReport.Count > 0 && !string.IsNullOrEmpty(Glob.LastTypeText))
+            {
+                reportData = CloneTypeReport(Glob.LastTypeReport);
+                reportText = Glob.LastTypeText;
+                reportSpeed = Glob.LastTypeSpeed;
+                reportHg = Glob.LastTypeHg;
+                reportCategory = Glob.LastTypeCategory;
+                reportInstration = Glob.LastTypeInstration;
+                reportTime = Glob.LastTypeTime == default ? DateTime.Now : Glob.LastTypeTime;
+            }
+            else
+            {
+                MessageBox.Show("当前没有可用的跟打报告记录！");
+                return;
+            }
+
+            WindowsFormsApplication2.跟打报告.TypeAnalysis tya = new 跟打报告.TypeAnalysis(reportTime.ToString("G"), reportData, reportText, reportSpeed, reportHg, reportCategory, reportInstration);
             tya.Show();
         }
         #endregion

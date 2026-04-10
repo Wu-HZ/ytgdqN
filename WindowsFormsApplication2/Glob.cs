@@ -438,6 +438,18 @@ namespace WindowsFormsApplication2
         public static List<TypeDate> TypeReport = new List<TypeDate>();
 
         /// <summary>
+        /// 最近一次完成的跟打报告
+        /// - 用于在重打或发下一段后继续查看上一轮报告
+        /// </summary>
+        public static List<TypeDate> LastTypeReport = new List<TypeDate>();
+        public static string LastTypeText = "";
+        public static string LastTypeSpeed = "0.00";
+        public static int LastTypeHg = 0;
+        public static DateTime LastTypeTime;
+        public static CategoryValue LastTypeCategory = CategoryValue.Unknow;
+        public static string LastTypeInstration = "";
+
+        /// <summary>
         /// 图片成绩发送昵称
         /// </summary>
         public static string PicName = "";
