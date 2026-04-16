@@ -169,6 +169,7 @@ namespace WindowsFormsApplication2
         public Form1()
         {
             InitializeComponent();
+            ConfigureRealtimeScoreGrid();
             int spX, spY;
             int spW, spH;
 
@@ -190,6 +191,26 @@ namespace WindowsFormsApplication2
             this.HotKeyHandler();
 
             this.UIThread(LoadSetup);
+        }
+
+        /// <summary>
+        /// 实时成绩区只按可见行自适应，避免段数增多后每次结算都扫描整表。
+        /// </summary>
+        private void ConfigureRealtimeScoreGrid()
+        {
+            if (this.dataGridView1 == null)
+            {
+                return;
+            }
+
+            this.dataGridView1.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None;
+            foreach (DataGridViewColumn column in this.dataGridView1.Columns)
+            {
+                column.AutoSizeMode = DataGridViewAutoSizeColumnMode.DisplayedCellsExceptHeader;
+            }
+
+            this.标题.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
+            this.标题.MinimumWidth = 140;
         }
 
         private void Form1_Load(object sender, EventArgs e)
