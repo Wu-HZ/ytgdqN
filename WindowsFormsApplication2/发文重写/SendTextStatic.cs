@@ -25,41 +25,13 @@ namespace WindowsFormsApplication2
 
         private void SendTextStatic_Load(object sender, EventArgs e)
         {
+            this.Location = new Point(MainPos.X - this.Width, MainPos.Y);
+
             //* 主题颜色
             LoadTheme(Theme.ThemeColorBG, Theme.ThemeColorFC, Theme.SecondBG, Theme.SecondFC);
 
             FillData();
-            LockToMainWindow();
             frm.ShowFlowText("发文已开启...");
-
-            // 跟随主窗口移动
-            frm.LocationChanged += Frm_LocationChanged;
-            this.FormClosed += (s, ev) => frm.LocationChanged -= Frm_LocationChanged;
-        }
-
-        private void Frm_LocationChanged(object sender, EventArgs e)
-        {
-            LockToMainWindow();
-        }
-
-        /// <summary>
-        /// 根据主窗口屏幕空间智能定位到左侧或右侧
-        /// </summary>
-        private void LockToMainWindow()
-        {
-            var screenArea = Screen.PrimaryScreen.WorkingArea;
-
-            // 优先尝试左侧
-            int leftX = frm.Location.X - this.Width;
-            if (leftX >= screenArea.Left)
-            {
-                this.Location = new Point(leftX, frm.Location.Y);
-            }
-            else
-            {
-                // 空间不够，放右侧
-                this.Location = new Point(frm.Location.X + frm.Width, frm.Location.Y);
-            }
         }
 
         /// <summary>
