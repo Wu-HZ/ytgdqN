@@ -5553,6 +5553,44 @@ namespace WindowsFormsApplication2
         }
 
         /// <summary>
+        /// 重新发文：重置发文进度并从头开始
+        /// </summary>
+        public void ReSendFun()
+        {
+            if (!NewSendText.发文状态)
+            {
+                return;
+            }
+
+            // 重置发文进度
+            NewSendText.已发段数 = 0;
+            NewSendText.已发字数 = 0;
+            NewSendText.标记 = 0;
+            NewSendText.SentId = 0;
+            Glob.CurSegmentNum = 1;
+            Glob.TempSegmentRecord.Clear();
+            Glob.SendCursor = 0;
+
+            // 还原发文全文（乱序模式下会被消耗）
+            NewSendText.发文全文 = NewSendText.文章全文;
+
+            // 还原词组（乱序模式下会被消耗）
+            if (NewSendText.类型 == "词组" && NewSendText.词组全文 != null && NewSendText.词组全文.Count > 0)
+            {
+                NewSendText.词组 = new List<string>(NewSendText.词组全文);
+            }
+
+            // 重置UI
+            F3();
+            this.lblDuan.Text = "第1段";
+
+            // 发送第一段
+            SendNextFun();
+
+            ShowFlowText("已重新开始发文");
+        }
+
+        /// <summary>
         /// 设置标题
         /// </summary>
         /// <param name="title"></param>

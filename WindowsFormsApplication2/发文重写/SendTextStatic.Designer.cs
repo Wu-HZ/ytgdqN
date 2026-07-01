@@ -30,6 +30,7 @@
         {
             this.components = new System.ComponentModel.Container();
             this.btnStop = new System.Windows.Forms.Button();
+            this.btnReSend = new System.Windows.Forms.Button();
             this.btnSave = new System.Windows.Forms.Button();
             this.toolTip1 = new System.Windows.Forms.ToolTip(this.components);
             this.lblNowIni = new System.Windows.Forms.Label();
@@ -83,25 +84,38 @@
             this.tableLayoutPanel5.SuspendLayout();
             this.gbstatic.SuspendLayout();
             this.SuspendLayout();
-            // 
+            //
             // btnStop
-            // 
+            //
             this.btnStop.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnStop.Font = new System.Drawing.Font("宋体", 9F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
-            this.btnStop.Location = new System.Drawing.Point(153, 351);
+            this.btnStop.Location = new System.Drawing.Point(160, 351);
             this.btnStop.Name = "btnStop";
-            this.btnStop.Size = new System.Drawing.Size(80, 23);
+            this.btnStop.Size = new System.Drawing.Size(72, 23);
             this.btnStop.TabIndex = 2;
             this.btnStop.Text = "停止发文";
             this.btnStop.UseVisualStyleBackColor = true;
             this.btnStop.Click += new System.EventHandler(this.btnStop_Click);
-            // 
+            //
+            // btnReSend
+            //
+            this.btnReSend.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnReSend.Font = new System.Drawing.Font("宋体", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this.btnReSend.Location = new System.Drawing.Point(81, 351);
+            this.btnReSend.Name = "btnReSend";
+            this.btnReSend.Size = new System.Drawing.Size(72, 23);
+            this.btnReSend.TabIndex = 3;
+            this.btnReSend.Text = "重新发文";
+            this.toolTip1.SetToolTip(this.btnReSend, "重置发文进度并从头开始发送");
+            this.btnReSend.UseVisualStyleBackColor = true;
+            this.btnReSend.Click += new System.EventHandler(this.btnReSend_Click);
+            //
             // btnSave
-            // 
+            //
             this.btnSave.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnSave.Location = new System.Drawing.Point(3, 351);
             this.btnSave.Name = "btnSave";
-            this.btnSave.Size = new System.Drawing.Size(83, 23);
+            this.btnSave.Size = new System.Drawing.Size(72, 23);
             this.btnSave.TabIndex = 1;
             this.btnSave.Text = "保存为配置";
             this.toolTip1.SetToolTip(this.btnSave, "将当前的发文状态保存为配置");
@@ -716,6 +730,7 @@
             this.Controls.Add(this.checkBox2);
             this.Controls.Add(this.label15);
             this.Controls.Add(this.btnStop);
+            this.Controls.Add(this.btnReSend);
             this.Controls.Add(this.btnSave);
             this.Controls.Add(this.panel1);
             this.Controls.Add(this.gbstatic);
@@ -747,6 +762,7 @@
         #endregion
 
         private System.Windows.Forms.Button btnStop;
+        private System.Windows.Forms.Button btnReSend;
         private System.Windows.Forms.Button btnSave;
         private System.Windows.Forms.ToolTip toolTip1;
         private System.Windows.Forms.Panel panel1;

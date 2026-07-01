@@ -59,6 +59,8 @@ namespace WindowsFormsApplication2
             this.btnSave.ForeColor = SFC;
             this.btnStop.BackColor = SBG;
             this.btnStop.ForeColor = Theme.GetTranColor(SFC, 50);
+            this.btnReSend.BackColor = SBG;
+            this.btnReSend.ForeColor = SFC;
         }
 
         /// <summary>
@@ -127,6 +129,54 @@ namespace WindowsFormsApplication2
             else
             {
                 this.checkBox2.Checked = false;
+            }
+
+            // 显式计算剩余字数，确保重新发文时正确刷新
+            if (NewSendText.类型 == "单字")
+            {
+                if (NewSendText.单字乱序)
+                {
+                    if (NewSendText.乱序全段不重复)
+                    {
+                        lblLeastCount.Text = NewSendText.发文全文.Length.ToString();
+                    }
+                    else
+                    {
+                        lblLeastCount.Text = "乱序无限";
+                    }
+                }
+                else
+                {
+                    int total = int.Parse(lblTotalCount.Text);
+                    int now = int.Parse(lblMarkCount.Text);
+                    lblLeastCount.Text = (total - now).ToString();
+                }
+            }
+            else if (NewSendText.类型 == "词组")
+            {
+                if (NewSendText.词组乱序)
+                {
+                    if (NewSendText.乱序全段不重复)
+                    {
+                        lblLeastCount.Text = NewSendText.词组.Count.ToString();
+                    }
+                    else
+                    {
+                        lblLeastCount.Text = "乱序无限";
+                    }
+                }
+                else
+                {
+                    int total = int.Parse(lblTotalCount.Text);
+                    int now = int.Parse(lblMarkCount.Text);
+                    lblLeastCount.Text = (total - now).ToString();
+                }
+            }
+            else
+            {
+                int total = int.Parse(lblTotalCount.Text);
+                int now = int.Parse(lblMarkCount.Text);
+                lblLeastCount.Text = (total - now).ToString();
             }
         }
 
@@ -240,6 +290,13 @@ namespace WindowsFormsApplication2
         private void btnStop_Click(object sender, EventArgs e)
         {
             frm.StopSendFun();
+        }
+
+        //重新发文
+        private void btnReSend_Click(object sender, EventArgs e)
+        {
+            frm.ReSendFun();
+            FillData();
         }
 
         #region 修改字段
