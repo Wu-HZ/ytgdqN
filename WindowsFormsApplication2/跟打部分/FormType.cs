@@ -3659,7 +3659,9 @@ namespace WindowsFormsApplication2
         {
             const int WM_HOTKEY = 0x0312;
             const int WM_NCHITTEST = 0x0084;
+            const int WM_NCLBUTTONDOWN = 0x00A1;
 
+            const int SC_SIZE = 0xF000;
 
             int HTCLIENT = 1;
             int HTLEFT = 10;
@@ -3681,6 +3683,13 @@ namespace WindowsFormsApplication2
                     break;
 
                 case WM_NCHITTEST:
+                    // 最大化时返回 HTCLIENT，让标题栏按钮的点击不被拦截
+                    if (this.WindowState == FormWindowState.Maximized)
+                    {
+                        m.Result = (IntPtr)HTCLIENT;
+                        break;
+                    }
+
                     int px = Form.MousePosition.X - this.Left;
                     int py = Form.MousePosition.Y - this.Top;
 
@@ -3706,6 +3715,24 @@ namespace WindowsFormsApplication2
                     }
                     m.Result = (IntPtr)temp;
                     break;
+
+                case WM_NCLBUTTONDOWN:
+                    // FormBorderStyle.None 下 DefWindowProc 不会处理边框缩放，
+                    // 需手动检测边框区域并发送 SC_SIZE 命令
+                    if (this.WindowState != FormWindowState.Maximized && this.IsResize)
+                    {
+                        int ht = m.WParam.ToInt32();
+                        int dir = ht - HTLEFT + 1; // HTLEFT=10 → SC_SIZE方向1
+                        if (dir >= 1 && dir <= 8)
+                        {
+                            ReleaseCapture();
+                            SendMessage(Handle, 274, SC_SIZE + dir, 0);
+                            return;
+                        }
+                    }
+                    base.WndProc(ref m);
+                    break;
+
                 default:
                     base.WndProc(ref m);
                     break;

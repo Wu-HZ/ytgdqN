@@ -551,8 +551,10 @@ namespace TyDll
             {
                 if (e.Button == MouseButtons.Left && !this.SysBtnRect.Contains(e.Location))
                 {
+                    const int SC_MOVE = 0xF010;
+                    const int HTCAPTION = 0x0002;
                     NativeMethods.ReleaseCapture();
-                    NativeMethods.SendMessage(Handle, 274, 61440 + 9, 0);
+                    NativeMethods.SendMessage(Handle, 274, SC_MOVE + HTCAPTION, 0);
                 }
             }
         }
