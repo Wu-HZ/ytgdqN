@@ -545,6 +545,12 @@ namespace WindowsFormsApplication2
             richTextBox1.Font = Theme.Font_1;
             textBoxEx1.Font = Theme.Font_2;
 
+            // 恢复对照区缩放比例
+            if (float.TryParse(IniRead("外观", "对照区缩放", "1.0"), out float zoomFactor))
+            {
+                richTextBox1.ZoomFactor = zoomFactor;
+            }
+
             // 跟打地图
             picMap.BackColor = Theme.R1Back;
         }
@@ -4354,6 +4360,9 @@ namespace WindowsFormsApplication2
             IniWrite("评级", "速度", Glob.SpeedGradeSpeed.ToString());
             IniWrite("评级", "难度", Glob.SpeedGradeDiff.ToString());
             IniWrite("评级", "结果", Glob.SpeedGrade.ToString());
+
+            // 保存对照区缩放比例
+            IniWrite("外观", "对照区缩放", richTextBox1.ZoomFactor.ToString());
 
             // 关闭数据库
             Glob.ScoreHistory.CloseDatabase();
