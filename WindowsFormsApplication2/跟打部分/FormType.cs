@@ -814,7 +814,7 @@ namespace WindowsFormsApplication2
             this.dataGridView1.Rows[0].DefaultCellStyle.Font = new Font("微软雅黑", 11f);
             this.dataGridView1.Rows[0].DefaultCellStyle.BackColor = Theme.ThemeColorBG;
             this.dataGridView1.Rows[0].DefaultCellStyle.ForeColor = Theme.ThemeColorFC;
-            this.dataGridView1.Rows[0].Height = 20;
+            this.dataGridView1.Rows[0].Height = 24;
             // 构建表头右键菜单
             this.BuildHeaderContextMenu();
             // 恢复列可见性
