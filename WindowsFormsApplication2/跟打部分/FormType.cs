@@ -4791,8 +4791,6 @@ namespace WindowsFormsApplication2
                     }
                 }
 
-                ShowFlowText(string.Format("第{0}段，计算码长为：{1}，用时：{2}秒", Glob.CurSegmentNum.ToString(), Glob.词库理论码长.ToString("0.00"), (DateTime.Now - startTime).TotalSeconds.ToString("0.000")));
-
                 mS1.Invalidate();
                 Glob.IsChecking = false;
             }));
@@ -4892,8 +4890,6 @@ namespace WindowsFormsApplication2
                         Glob.CalcKeysTotal[KeyObj.KeysStringDic[codeStr[c].ToString()]]++;
                     }
                 }
-
-                ShowFlowText(string.Format("第{0}段，计算码长为：{1}，用时：{2}秒", Glob.CurSegmentNum.ToString(), Glob.词库理论码长.ToString("0.00"), (DateTime.Now - startTime).TotalSeconds.ToString("0.000")));
 
                 mS1.Invalidate();
                 Glob.IsChecking = false;
