@@ -1078,6 +1078,16 @@ namespace WindowsFormsApplication2
 
                 RestoreSendSessionState(snapshot);
                 ShowFlowText("已恢复上次未完成的发文进度");
+
+                // 自动打开发文状态窗口
+                this.BeginInvoke(new MethodInvoker(() =>
+                {
+                    if (发文状态窗口 == null || 发文状态窗口.IsDisposed)
+                    {
+                        发文状态窗口 = new SendTextStatic(this.Location, this);
+                        发文状态窗口.Show(this);
+                    }
+                }));
             }
             catch
             {
