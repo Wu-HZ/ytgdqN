@@ -817,6 +817,17 @@ namespace WindowsFormsApplication2
             this.dataGridView1.Rows[0].Height = 20;
             // 构建表头右键菜单
             this.BuildHeaderContextMenu();
+            // 恢复列可见性
+            string hiddenColumns = IniRead("外观", "隐藏列", "");
+            if (!string.IsNullOrEmpty(hiddenColumns))
+            {
+                string[] hiddenNames = hiddenColumns.Split('|');
+                foreach (DataGridViewColumn column in this.dataGridView1.Columns)
+                {
+                    if (hiddenNames.Contains(column.Name))
+                        column.Visible = false;
+                }
+            }
             //跟打地图
             Bitmap bmp_ = new Bitmap(this.picMap.ClientRectangle.Width, this.picMap.ClientRectangle.Height);
             this.picMap.Image = bmp_;
@@ -4370,6 +4381,15 @@ namespace WindowsFormsApplication2
 
             // 保存对照区缩放比例
             IniWrite("外观", "对照区缩放", richTextBox1.ZoomFactor.ToString());
+
+            // 保存列可见性
+            List<string> hiddenList = new List<string>();
+            foreach (DataGridViewColumn column in this.dataGridView1.Columns)
+            {
+                if (!column.Visible)
+                    hiddenList.Add(column.Name);
+            }
+            IniWrite("外观", "隐藏列", string.Join("|", hiddenList));
 
             // 关闭数据库
             Glob.ScoreHistory.CloseDatabase();
