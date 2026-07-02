@@ -130,6 +130,11 @@ namespace WindowsFormsApplication2
         private HistoryDataGridHandler gridHandler;
 
         /// <summary>
+        /// 表头右键菜单
+        /// </summary>
+        private ContextMenuStrip headerContextMenuStrip;
+
+        /// <summary>
         /// 特殊字符替换字典
         /// </summary>
         private readonly static Dictionary<string, char> CharReDict = new Dictionary<string, char>
@@ -810,6 +815,8 @@ namespace WindowsFormsApplication2
             this.dataGridView1.Rows[0].DefaultCellStyle.BackColor = Theme.ThemeColorBG;
             this.dataGridView1.Rows[0].DefaultCellStyle.ForeColor = Theme.ThemeColorFC;
             this.dataGridView1.Rows[0].Height = 20;
+            // 构建表头右键菜单
+            this.BuildHeaderContextMenu();
             //跟打地图
             Bitmap bmp_ = new Bitmap(this.picMap.ClientRectangle.Width, this.picMap.ClientRectangle.Height);
             this.picMap.Image = bmp_;
@@ -6593,8 +6600,54 @@ namespace WindowsFormsApplication2
         #region 表格右键菜单事件
         private void dataGridView1_CellMouseDown(object sender, DataGridViewCellMouseEventArgs e)
         {
+            // 表头行右键：弹出列可见性菜单
+            if (e.RowIndex == 0 && e.Button == MouseButtons.Right)
+            {
+                // 同步勾选状态
+                foreach (ToolStripMenuItem item in this.headerContextMenuStrip.Items)
+                {
+                    int columnIndex = (int)item.Tag;
+                    item.Checked = this.dataGridView1.Columns[columnIndex].Visible;
+                }
+                this.headerContextMenuStrip.Show(System.Windows.Forms.Cursor.Position);
+                return;
+            }
+
             this.gridHandler.SetMouseLocation(e);
             this.ItemToolStripTextBox.Text = this.gridHandler.MenuGetScoreTime();
+        }
+
+        /// <summary>
+        /// 构建表头右键菜单（列可见性切换）
+        /// </summary>
+        private void BuildHeaderContextMenu()
+        {
+            this.headerContextMenuStrip = new ContextMenuStrip();
+            foreach (DataGridViewColumn column in this.dataGridView1.Columns)
+            {
+                ToolStripMenuItem item = new ToolStripMenuItem
+                {
+                    Text = column.HeaderText,
+                    CheckOnClick = true,
+                    Checked = column.Visible,
+                    Tag = column.Index
+                };
+                item.Click += new EventHandler(this.HeaderMenuItem_Click);
+                this.headerContextMenuStrip.Items.Add(item);
+            }
+        }
+
+        /// <summary>
+        /// 表头右键菜单项点击：切换列可见性
+        /// </summary>
+        private void HeaderMenuItem_Click(object sender, EventArgs e)
+        {
+            ToolStripMenuItem item = sender as ToolStripMenuItem;
+            if (item == null) return;
+
+            int columnIndex = (int)item.Tag;
+            DataGridViewColumn column = this.dataGridView1.Columns[columnIndex];
+            column.Visible = item.Checked;
         }
 
         private void CopyScoreToolStripMenuItem_Click(object sender, EventArgs e)
