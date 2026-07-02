@@ -3935,6 +3935,9 @@ namespace WindowsFormsApplication2
                 //! 清理文章类型，防止先前为词组时导致乱序功能不生效
                 NewSendText.类型 = string.Empty;
 
+                //* 清理跟打历史区
+                this.ClearHistoryGrid();
+
                 //* 清理原测速点信息
                 this.CleanSpeedPoints();
                 this.cmsDuanList.Items.Clear();
@@ -5610,6 +5613,9 @@ namespace WindowsFormsApplication2
                 return;
             }
 
+            // 清理跟打历史区
+            this.ClearHistoryGrid();
+
             // 重置发文进度
             NewSendText.已发段数 = 0;
             NewSendText.已发字数 = 0;
@@ -5980,6 +5986,30 @@ namespace WindowsFormsApplication2
                 this.splitContainer1.Panel1Collapsed = true;
                 this.splitContainer3.Panel1Collapsed = true;
             }
+        }
+
+        /// <summary>
+        /// 清除跟打历史区记录（保留表头行），重置统计数据
+        /// </summary>
+        private void ClearHistoryGrid()
+        {
+            while (this.dataGridView1.RowCount > 1)
+            {
+                this.dataGridView1.Rows.RemoveAt(this.dataGridView1.RowCount - 1);
+            }
+            Glob.HaveTypeCount = 0;
+            Glob.HaveTypeCount_ = 0;
+            Glob.TotalUse = 0;
+            Glob.Total_Type = 0;
+            Glob.Per_Speed = 0;
+            Glob.Per_Jj = 0;
+            Glob.Per_Mc = 0;
+            Glob.Per_Nd = 0;
+            Glob.Per_Pj = 0;
+            Glob.Per_Hgl = 0;
+            Glob.Per_Jz = 0;
+            Glob.Per_Xl = 0;
+            Glob.Per_Dcl = 0;
         }
 
         #endregion
