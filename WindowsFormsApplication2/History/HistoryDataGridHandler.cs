@@ -33,6 +33,9 @@ namespace WindowsFormsApplication2.History
                 DataGridViewRow curRow = this.historyDataGridView.Rows[this.mouseLocation.RowIndex];
                 if (curRow != null)
                 {
+                    // 优先从 Tag 读取完整日期时间，兼容界面仅显示 HH:mm:ss 的情况
+                    if (curRow.Cells[1].Tag != null)
+                        return curRow.Cells[1].Tag.ToString();
                     return curRow.Cells[1].Value.ToString();
                 }
             }
@@ -51,7 +54,7 @@ namespace WindowsFormsApplication2.History
         public void CopyScore(StorageDataSet.ScoreDataTable curData)
         {
             DataGridViewRow curRow = this.historyDataGridView.Rows[this.mouseLocation.RowIndex];
-            StorageDataSet.ScoreRow sd = StorageDataSet.GetScoreRowFromTime(curData, curRow.Cells[1].Value.ToString());
+            StorageDataSet.ScoreRow sd = StorageDataSet.GetScoreRowFromTime(curData, this.MenuGetScoreTime());
             if (curRow != null && sd != null)
             {
                 string goal = "第" + curRow.Cells[2].Value + "段";
