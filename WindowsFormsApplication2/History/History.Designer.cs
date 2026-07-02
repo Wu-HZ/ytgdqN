@@ -272,6 +272,7 @@
             // 
             // LastPageButton
             // 
+            this.LastPageButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.LastPageButton.Location = new System.Drawing.Point(1012, 1);
             this.LastPageButton.Name = "LastPageButton";
             this.LastPageButton.Size = new System.Drawing.Size(39, 23);
@@ -284,6 +285,7 @@
             // 
             // NextPageButton
             // 
+            this.NextPageButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.NextPageButton.Location = new System.Drawing.Point(956, 1);
             this.NextPageButton.Name = "NextPageButton";
             this.NextPageButton.Size = new System.Drawing.Size(50, 23);
@@ -296,6 +298,7 @@
             // 
             // PrePageButton
             // 
+            this.PrePageButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.PrePageButton.Location = new System.Drawing.Point(897, 1);
             this.PrePageButton.Name = "PrePageButton";
             this.PrePageButton.Size = new System.Drawing.Size(53, 23);
@@ -308,6 +311,7 @@
             // 
             // FirstPageButton
             // 
+            this.FirstPageButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.FirstPageButton.Location = new System.Drawing.Point(852, 1);
             this.FirstPageButton.Name = "FirstPageButton";
             this.FirstPageButton.Size = new System.Drawing.Size(39, 23);
@@ -320,6 +324,7 @@
             // 
             // JumpPageButton
             // 
+            this.JumpPageButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.JumpPageButton.Location = new System.Drawing.Point(788, 1);
             this.JumpPageButton.Name = "JumpPageButton";
             this.JumpPageButton.Size = new System.Drawing.Size(39, 23);
@@ -332,6 +337,7 @@
             // 
             // TotalPageNumLabel
             // 
+            this.TotalPageNumLabel.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.TotalPageNumLabel.Location = new System.Drawing.Point(729, 4);
             this.TotalPageNumLabel.Margin = new System.Windows.Forms.Padding(0);
             this.TotalPageNumLabel.Name = "TotalPageNumLabel";
@@ -343,6 +349,7 @@
             // 
             // PageNumTextBox
             // 
+            this.PageNumTextBox.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.PageNumTextBox.Location = new System.Drawing.Point(691, 2);
             this.PageNumTextBox.Name = "PageNumTextBox";
             this.PageNumTextBox.Size = new System.Drawing.Size(35, 21);
@@ -354,26 +361,27 @@
             // 
             // CountLabel
             // 
+            this.CountLabel.AutoSize = true;
             this.CountLabel.ForeColor = System.Drawing.SystemColors.MenuHighlight;
             this.CountLabel.Location = new System.Drawing.Point(300, 4);
             this.CountLabel.Name = "CountLabel";
             this.CountLabel.Padding = new System.Windows.Forms.Padding(0, 2, 0, 0);
-            this.CountLabel.Size = new System.Drawing.Size(192, 18);
             this.CountLabel.TabIndex = 4;
             this.CountLabel.Text = "label2";
             // 
             // label1
             // 
+            this.label1.AutoSize = true;
             this.label1.Location = new System.Drawing.Point(226, 4);
             this.label1.Margin = new System.Windows.Forms.Padding(3, 0, 0, 0);
             this.label1.Name = "label1";
             this.label1.Padding = new System.Windows.Forms.Padding(0, 2, 0, 0);
-            this.label1.Size = new System.Drawing.Size(66, 18);
             this.label1.TabIndex = 3;
             this.label1.Text = "总结果数：";
             // 
             // SearchButton
             // 
+            this.SearchButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.SearchButton.BackgroundImage = ((System.Drawing.Image)(resources.GetObject("SearchButton.BackgroundImage")));
             this.SearchButton.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
             this.SearchButton.Location = new System.Drawing.Point(661, 1);
@@ -387,6 +395,8 @@
             // 
             // SearchTextBox
             // 
+            this.SearchTextBox.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
+            | System.Windows.Forms.AnchorStyles.Right)));
             this.SearchTextBox.Location = new System.Drawing.Point(498, 2);
             this.SearchTextBox.Name = "SearchTextBox";
             this.SearchTextBox.Size = new System.Drawing.Size(161, 21);
@@ -397,11 +407,11 @@
             // 
             // ResultLabel
             // 
+            this.ResultLabel.AutoSize = true;
             this.ResultLabel.ForeColor = System.Drawing.Color.OliveDrab;
             this.ResultLabel.Location = new System.Drawing.Point(6, 4);
             this.ResultLabel.Name = "ResultLabel";
             this.ResultLabel.Padding = new System.Windows.Forms.Padding(0, 2, 0, 0);
-            this.ResultLabel.Size = new System.Drawing.Size(214, 18);
             this.ResultLabel.TabIndex = 0;
             this.ResultLabel.Text = "label1";
             this.toolTip1.SetToolTip(this.ResultLabel, "所展示的数据类别");
@@ -424,8 +434,7 @@
             // 
             // SpeedChart
             // 
-            this.SpeedChart.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
+            this.SpeedChart.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)));
             this.SpeedChart.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(150)))), ((int)(((byte)(150)))), ((int)(((byte)(150)))));
             chartArea1.AxisX.IntervalAutoMode = System.Windows.Forms.DataVisualization.Charting.IntervalAutoMode.VariableCount;
             chartArea1.AxisX.LabelAutoFitMaxFontSize = 7;

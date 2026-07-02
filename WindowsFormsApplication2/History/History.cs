@@ -100,7 +100,7 @@ namespace WindowsFormsApplication2.History
             int previewLeft = this.MonthCalendar.Right + controlSpacing;
             int previewWidth = this.PreviewGroupBox.Width;
             int chartLeft = previewLeft + previewWidth + controlSpacing;
-            int chartWidth = Math.Max(120, this.splitContainer1.Panel1.ClientSize.Width - chartLeft - outerPadding);
+            int chartWidth = 483;
             int toolbarTop = this.MonthCalendar.Bottom + controlSpacing;
             int splitterDistance = toolbarTop + this.ToolPanel.Height + outerPadding;
             int maxSplitterDistance = this.splitContainer1.Height - this.splitContainer1.Panel2MinSize - this.splitContainer1.SplitterWidth;
@@ -112,6 +112,19 @@ namespace WindowsFormsApplication2.History
                 toolbarTop,
                 this.splitContainer1.Panel1.ClientSize.Width - outerPadding * 2 - 1,
                 this.ToolPanel.Height);
+
+            // 标签自适应流式排列：label1 紧跟 ResultLabel，CountLabel 紧跟 label1，搜索框填满剩余空间
+            const int labelSpacing = 4;
+            this.label1.Left = this.ResultLabel.Right + labelSpacing;
+            this.CountLabel.Left = this.label1.Right + labelSpacing;
+
+            const int searchBoxSpacing = 4;
+            this.SearchTextBox.Left = this.CountLabel.Right + searchBoxSpacing;
+            int searchBoxWidth = this.SearchButton.Left - this.SearchTextBox.Left - searchBoxSpacing;
+            if (searchBoxWidth > 40)
+            {
+                this.SearchTextBox.Width = searchBoxWidth;
+            }
 
             if (splitterDistance > 0 && splitterDistance <= maxSplitterDistance && this.splitContainer1.SplitterDistance != splitterDistance)
             {
