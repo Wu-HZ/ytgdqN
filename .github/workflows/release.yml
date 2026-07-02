@@ -17,6 +17,8 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
 
     - name: Setup .NET 8
       uses: actions/setup-dotnet@v4
@@ -46,13 +48,20 @@ jobs:
 
     - name: Get version
       id: version
+      shell: pwsh
       run: |
         if ("${{ github.event_name }}" -eq "workflow_dispatch") {
           echo "VERSION=${{ github.event.inputs.version }}" >> $env:GITHUB_OUTPUT
         } else {
-          $tag = "${{ github.ref_name }}"
-          echo "VERSION=$tag" >> $env:GITHUB_OUTPUT
+          echo "VERSION=${{ github.ref_name }}" >> $env:GITHUB_OUTPUT
         }
+
+    - name: Generate ChangeLog
+      id: changelog
+      uses: dragonish/tag-changelog@v1
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        config_file: .github/scripts/tag-changelog-config.cjs
 
     - name: Create Release
       uses: softprops/action-gh-release@v1
@@ -64,6 +73,9 @@ jobs:
 
           ### 运行要求
           - .NET 8.0 Desktop Runtime
+
+          ### 更新内容
+          ${{ steps.changelog.outputs.changes }}
 
           ### 下载说明
           - `ytgdq_x64.zip` - 64位版本
