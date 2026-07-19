@@ -95,7 +95,7 @@ namespace WindowsFormsApplication2.History
                 }
                 if (this.innerSplitContainer.Width > 100)
                 {
-                    this.innerSplitContainer.SplitterDistance = (int)(this.innerSplitContainer.Width * 0.76);
+                    this.innerSplitContainer.SplitterDistance = (int)(this.innerSplitContainer.Width * 0.73);
                 }
                 if (this.rightSplitContainer.Height > 100)
                 {

@@ -1064,6 +1064,8 @@
             // innerSplitContainer.Panel2
             // 
             this.innerSplitContainer.Panel2.Controls.Add(this.rightSplitContainer);
+            this.innerSplitContainer.Panel2.Padding = new System.Windows.Forms.Padding(0, 0, 2, 0);
+            this.innerSplitContainer.Panel2MinSize = 120;
             this.innerSplitContainer.Size = new System.Drawing.Size(813, 450);
             this.innerSplitContainer.SplitterDistance = 620;
             this.innerSplitContainer.TabIndex = 0;
@@ -1142,6 +1144,7 @@
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(984, 450);
+            this.Padding = new System.Windows.Forms.Padding(3);
             this.Controls.Add(this.outerSplitContainer);
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.Name = "History";
