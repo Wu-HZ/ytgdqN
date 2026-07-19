@@ -69,6 +69,8 @@ namespace WindowsFormsApplication2.History
             } 
         }
 
+        private Panel chartOverlay;
+
         public History(Form1 frm1)
         {
             this.frm = frm1;
@@ -77,6 +79,13 @@ namespace WindowsFormsApplication2.History
             this.WindowState = FormWindowState.Maximized;
             this.paginationPanel.Resize += (sender, e) => UpdatePaginationLayout();
             this.leftPanel.Resize += (sender, e) => UpdateLeftPanelLayout();
+            this.SpeedChart.MouseDoubleClick += SpeedChart_MouseDoubleClick;
+
+            this.chartOverlay = new Panel();
+            this.chartOverlay.Dock = DockStyle.Fill;
+            this.chartOverlay.BackColor = Color.FromArgb(30, 30, 30);
+            this.chartOverlay.Visible = false;
+            this.outerSplitContainer.Panel2.Controls.Add(this.chartOverlay);
         }
 
         private void UpdateLeftPanelLayout()
@@ -553,6 +562,26 @@ namespace WindowsFormsApplication2.History
             }
         }
 
+        private void SpeedChart_MouseDoubleClick(object sender, MouseEventArgs e)
+        {
+            if (this.chartOverlay.Visible)
+            {
+                this.suppressArticleListEvent = true;
+                this.SpeedChart.Dock = DockStyle.Fill;
+                this.rightSplitContainer.Panel2.Controls.Add(this.SpeedChart);
+                this.rightSplitContainer.Panel2.Controls.SetChildIndex(this.SpeedChart, 0);
+                this.chartOverlay.Visible = false;
+                this.innerSplitContainer.Visible = true;
+                this.suppressArticleListEvent = false;
+                return;
+            }
+
+            this.chartOverlay.Controls.Add(this.SpeedChart);
+            this.SpeedChart.Dock = DockStyle.Fill;
+            this.chartOverlay.Visible = true;
+            this.innerSplitContainer.Visible = false;
+        }
+
         private void HistorySelectionChanged(object sender, EventArgs e)
         {
             DataGridViewRow curRow = (sender as DataGridView).CurrentRow;
@@ -948,5 +977,15 @@ namespace WindowsFormsApplication2.History
             }
         }
         #endregion
+
+        protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+        {
+            if (keyData == Keys.Escape && this.chartOverlay != null && this.chartOverlay.Visible)
+            {
+                this.SpeedChart_MouseDoubleClick(null, null);
+                return true;
+            }
+            return base.ProcessCmdKey(ref msg, keyData);
+        }
     }
 }
