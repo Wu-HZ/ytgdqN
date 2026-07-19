@@ -76,6 +76,24 @@ namespace WindowsFormsApplication2.History
             this.MonthCalendar.HigherViewRangeSelected += MonthCalendar_HigherViewRangeSelected;
             this.WindowState = FormWindowState.Maximized;
             this.paginationPanel.Resize += (sender, e) => UpdatePaginationLayout();
+            this.leftPanel.Resize += (sender, e) => UpdateLeftPanelLayout();
+        }
+
+        private void UpdateLeftPanelLayout()
+        {
+            if (!this.IsHandleCreated || this.leftPanel.ClientSize.Width <= 0) return;
+
+            this.MonthCalendar.Location = new Point(
+                (this.leftPanel.ClientSize.Width - this.MonthCalendar.Width) / 2,
+                this.MonthCalendar.Location.Y);
+
+            int labelTop = this.MonthCalendar.Bottom + 5;
+            this.articleListLabel.Location = new Point(5, labelTop);
+
+            int listTop = this.articleListLabel.Bottom + 3;
+            this.articleListBox.SetBounds(5, listTop,
+                this.leftPanel.ClientSize.Width - 10,
+                this.leftPanel.ClientSize.Height - listTop);
         }
 
         private void History_Load(object sender, EventArgs e)
@@ -102,6 +120,7 @@ namespace WindowsFormsApplication2.History
                     this.rightSplitContainer.SplitterDistance = (int)(this.rightSplitContainer.Height * 0.4);
                 }
                 this.UpdatePaginationLayout();
+                this.UpdateLeftPanelLayout();
             }));
         }
 

@@ -164,6 +164,7 @@
             // MonthCalendar
             // 
             this.MonthCalendar.ContextMenuStrip = this.MonthCalendarContextMenuStrip;
+            this.MonthCalendar.CalendarDimensions = new System.Drawing.Size(1, 1);
             this.MonthCalendar.Font = new System.Drawing.Font("微软雅黑", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
             this.MonthCalendar.Location = new System.Drawing.Point(5, 4);
             this.MonthCalendar.MaxSelectionCount = 3660;
@@ -294,7 +295,6 @@
             this.articleListLabel.ForeColor = System.Drawing.Color.White;
             this.articleListLabel.Location = new System.Drawing.Point(5, 192);
             this.articleListLabel.Name = "articleListLabel";
-            this.articleListLabel.Size = new System.Drawing.Size(56, 17);
             this.articleListLabel.TabIndex = 1;
             this.articleListLabel.Text = "跟打文章";
             // 
