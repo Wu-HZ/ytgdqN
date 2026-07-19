@@ -57,6 +57,8 @@ namespace WindowsFormsApplication2.History
         /// </summary>
         private int totalCount = 0;
 
+        private bool suppressArticleListEvent = false;
+
         /// <summary>
         /// 总页数
         /// </summary>
@@ -71,65 +73,118 @@ namespace WindowsFormsApplication2.History
         {
             this.frm = frm1;
             InitializeComponent();
-            this.PreviewRichTextBox.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
             this.MonthCalendar.HigherViewRangeSelected += MonthCalendar_HigherViewRangeSelected;
-            this.splitContainer1.Panel1.Resize += (sender, e) => UpdateTopPanelLayout();
+            this.WindowState = FormWindowState.Maximized;
         }
 
         private void History_Load(object sender, EventArgs e)
         {
             this.gridHandler = new HistoryDataGridHandler(this.dataGridView1);
             this.MonthCalendar.BoldedDates = Glob.ScoreHistory.GetAllScoreDates();
-            this.BeginInvoke((MethodInvoker)UpdateTopPanelLayout);
             this.showTrendChart = this.TrendChartCheckBox.Checked;
-            ShowDataFromDateRange(DateTime.Now, DateTime.Now);
+            this.dataType.Date = DateTime.Now;
+            this.dataType.EndDate = DateTime.Now;
+            this.LoadArticleList();
+            this.RefreshData();
+            this.BeginInvoke((MethodInvoker)(() =>
+            {
+                if (this.rightSplitContainer.Height > 100)
+                {
+                    this.rightSplitContainer.SplitterDistance = (int)(this.rightSplitContainer.Height * 0.4);
+                }
+            }));
         }
 
-        // 按日历实际尺寸重排顶部区域，避免高 DPI 下出现多余留白。
-        private void UpdateTopPanelLayout()
+        private void LoadArticleList()
         {
-            if (!this.IsHandleCreated || this.splitContainer1.Panel1.ClientSize.Width <= 0)
+            this.suppressArticleListEvent = true;
+            string previousSelection = this.articleListBox.SelectedItem as string;
+            this.articleListBox.Items.Clear();
+            this.articleListBox.Items.Add("(全部文章)");
+            List<string> titles = Glob.ScoreHistory.GetDistinctArticleTitles();
+            foreach (string title in titles)
+            {
+                this.articleListBox.Items.Add(title);
+            }
+
+            if (previousSelection != null && this.articleListBox.Items.Contains(previousSelection))
+            {
+                this.articleListBox.SelectedItem = previousSelection;
+            }
+            else
+            {
+                this.articleListBox.SelectedIndex = 0;
+            }
+            this.suppressArticleListEvent = false;
+        }
+
+        private void ArticleListBox_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (this.suppressArticleListEvent)
             {
                 return;
             }
 
-            const int outerPadding = 5;
-            const int controlSpacing = 5;
-            int top = this.MonthCalendar.Top;
-            int calendarHeight = this.MonthCalendar.Height;
-            int previewLeft = this.MonthCalendar.Right + controlSpacing;
-            int previewWidth = this.PreviewGroupBox.Width;
-            int chartLeft = previewLeft + previewWidth + controlSpacing;
-            int chartWidth = 483;
-            int toolbarTop = this.MonthCalendar.Bottom + controlSpacing;
-            int splitterDistance = toolbarTop + this.ToolPanel.Height + outerPadding;
-            int maxSplitterDistance = this.splitContainer1.Height - this.splitContainer1.Panel2MinSize - this.splitContainer1.SplitterWidth;
-
-            this.PreviewGroupBox.SetBounds(previewLeft, top, previewWidth, calendarHeight);
-            this.SpeedChart.SetBounds(chartLeft, top, chartWidth, calendarHeight);
-            this.ToolPanel.SetBounds(
-                outerPadding,
-                toolbarTop,
-                this.splitContainer1.Panel1.ClientSize.Width - outerPadding * 2 - 1,
-                this.ToolPanel.Height);
-
-            // 标签自适应流式排列：label1 紧跟 ResultLabel，CountLabel 紧跟 label1，搜索框填满剩余空间
-            const int labelSpacing = 4;
-            this.label1.Left = this.ResultLabel.Right + labelSpacing;
-            this.CountLabel.Left = this.label1.Right + labelSpacing;
-
-            const int searchBoxSpacing = 4;
-            this.SearchTextBox.Left = this.CountLabel.Right + searchBoxSpacing;
-            int searchBoxWidth = this.SearchButton.Left - this.SearchTextBox.Left - searchBoxSpacing;
-            if (searchBoxWidth > 40)
+            if (this.articleListBox.SelectedIndex <= 0 || this.articleListBox.SelectedItem.ToString() == "(全部文章)")
             {
-                this.SearchTextBox.Width = searchBoxWidth;
+                this.dataType.Title = null;
+            }
+            else
+            {
+                this.dataType.Title = this.articleListBox.SelectedItem.ToString();
+            }
+            this.RefreshData();
+        }
+
+        private void RefreshData()
+        {
+            this.ClearGridData();
+
+            if (this.dataType.Date > this.dataType.EndDate)
+            {
+                DateTime temp = this.dataType.Date;
+                this.dataType.Date = this.dataType.EndDate;
+                this.dataType.EndDate = temp;
             }
 
-            if (splitterDistance > 0 && splitterDistance <= maxSplitterDistance && this.splitContainer1.SplitterDistance != splitterDistance)
+            bool isSingleDate = this.dataType.Date == this.dataType.EndDate;
+            string label = isSingleDate
+                ? "日期：" + this.dataType.Date.ToString("d")
+                : "日期：" + this.dataType.Date.ToString("d") + " - " + this.dataType.EndDate.ToString("d");
+
+            if (!string.IsNullOrEmpty(this.dataType.Title))
             {
-                this.splitContainer1.SplitterDistance = splitterDistance;
+                label += " | 标题：" + this.dataType.Title;
             }
+            if (this.dataType.SegmentId.HasValue)
+            {
+                label += " | 文段ID：" + this.dataType.SegmentId.Value.ToString();
+            }
+            this.ResultLabel.Text = label;
+
+            this.totalCount = Glob.ScoreHistory.GetScoreCountFiltered(
+                this.dataType.Date, this.dataType.EndDate, this.dataType.Title, this.dataType.SegmentId);
+
+            if (this.TotalPage > 0)
+            {
+                this.currentPage = 1;
+            }
+            else
+            {
+                this.currentPage = 0;
+            }
+
+            this.UpdateGridToolBar();
+
+            if (this.totalCount > 0)
+            {
+                this.currentScoreData = Glob.ScoreHistory.GetScoresFiltered(
+                    this.dataType.Date, this.dataType.EndDate, this.dataType.Title, this.dataType.SegmentId, 0, PageSize);
+                this.ReloadChartScoreData();
+            }
+
+            this.ShowGridData();
+            this.RefreshChart();
         }
 
         /// <summary>
@@ -240,138 +295,6 @@ namespace WindowsFormsApplication2.History
             this.PageNumTextBox.Text = this.currentPage.ToString();
         }
 
-        private void ShowDataFromDate(DateTime date)
-        {
-            this.ShowDataFromDateRange(date, date);
-        }
-
-        private void ShowDataFromDateRange(DateTime startDate, DateTime endDate)
-        {
-            this.ClearGridData();
-            if (startDate.Date > endDate.Date)
-            {
-                DateTime temp = startDate;
-                startDate = endDate;
-                endDate = temp;
-            }
-
-            this.dataType.Cur = "Date";
-            this.dataType.Date = startDate.Date;
-            this.dataType.EndDate = endDate.Date;
-
-            bool isSingleDate = this.dataType.Date == this.dataType.EndDate;
-            this.ResultLabel.Text = isSingleDate
-                ? "日期：" + this.dataType.Date.ToString("d")
-                : "日期：" + this.dataType.Date.ToString("d") + " - " + this.dataType.EndDate.ToString("d");
-            this.totalCount = isSingleDate
-                ? Glob.ScoreHistory.GetScoreCountFromDate(this.dataType.Date)
-                : Glob.ScoreHistory.GetScoreCountFromDateRange(this.dataType.Date, this.dataType.EndDate);
-
-            if (this.TotalPage > 0)
-            {
-                this.currentPage = 1;
-            }
-            else
-            {
-                this.currentPage = 0;
-            }
-
-            this.UpdateGridToolBar();
-            if (this.totalCount > 0)
-            {
-                this.currentScoreData = isSingleDate
-                    ? Glob.ScoreHistory.GetScoreFromDate(this.dataType.Date, 0, PageSize)
-                    : Glob.ScoreHistory.GetScoreFromDateRange(this.dataType.Date, this.dataType.EndDate, 0, PageSize);
-                this.ReloadChartScoreData();
-            }
-            this.ShowGridData();
-            this.RefreshChart();
-        }
-
-        private void ShowDataFromTitle(string title)
-        {
-            this.ClearGridData();
-            this.dataType.Cur = "Title";
-            this.dataType.Title = title;
-            this.dataType.EndDate = this.dataType.Date;
-            this.ResultLabel.Text = "标题：" + title;
-            this.totalCount = Glob.ScoreHistory.GetScoreCountFromTitle(title);
-
-            if (this.TotalPage > 0)
-            {
-                this.currentPage = 1;
-            }
-            else
-            {
-                this.currentPage = 0;
-            }
-
-            this.UpdateGridToolBar();
-            if (this.totalCount > 0)
-            {
-                this.currentScoreData = Glob.ScoreHistory.GetScoreFromTitle(title, 0, PageSize);
-                this.ReloadChartScoreData();
-            }
-            this.ShowGridData();
-            this.RefreshChart();
-        }
-
-        private void ShowDataFromSubTitle(string title)
-        {
-            this.ClearGridData();
-            this.dataType.Cur = "SubTitle";
-            this.dataType.SubTitle = title;
-            this.dataType.EndDate = this.dataType.Date;
-            this.ResultLabel.Text = "搜索标题：" + title;
-            this.totalCount = Glob.ScoreHistory.GetScoreCountFromSubTitle(title);
-
-            if (this.TotalPage > 0)
-            {
-                this.currentPage = 1;
-            }
-            else
-            {
-                this.currentPage = 0;
-            }
-
-            this.UpdateGridToolBar();
-            if (this.totalCount > 0)
-            {
-                this.currentScoreData = Glob.ScoreHistory.GetScoreFromSubTitle(title, 0, PageSize);
-                this.ReloadChartScoreData();
-            }
-            this.ShowGridData();
-            this.RefreshChart();
-        }
-
-        private void ShowDataFromSegment(long id)
-        {
-            this.ClearGridData();
-            this.dataType.Cur = "SegmentId";
-            this.dataType.SegmentId = id;
-            this.dataType.EndDate = this.dataType.Date;
-            this.ResultLabel.Text = "文段ID：" + id.ToString();
-            this.totalCount = Glob.ScoreHistory.GetScoreCountFromSegmentId(id);
-
-            if (this.TotalPage > 0)
-            {
-                this.currentPage = 1;
-            }
-            else
-            {
-                this.currentPage = 0;
-            }
-
-            this.UpdateGridToolBar();
-            if (this.totalCount > 0)
-            {
-                this.currentScoreData = Glob.ScoreHistory.GetScoreFromSegmentId(id, 0, PageSize);
-                this.ReloadChartScoreData();
-            }
-            this.ShowGridData();
-            this.RefreshChart();
-        }
-
         private void ReloadChartScoreData()
         {
             this.chartScoreData.Clear();
@@ -380,23 +303,8 @@ namespace WindowsFormsApplication2.History
                 return;
             }
 
-            switch (this.dataType.Cur)
-            {
-                case "Date":
-                    this.chartScoreData = this.dataType.Date == this.dataType.EndDate
-                        ? Glob.ScoreHistory.GetScoreFromDate(this.dataType.Date, 0, this.totalCount)
-                        : Glob.ScoreHistory.GetScoreFromDateRange(this.dataType.Date, this.dataType.EndDate, 0, this.totalCount);
-                    break;
-                case "Title":
-                    this.chartScoreData = Glob.ScoreHistory.GetScoreFromTitle(this.dataType.Title, 0, this.totalCount);
-                    break;
-                case "SubTitle":
-                    this.chartScoreData = Glob.ScoreHistory.GetScoreFromSubTitle(this.dataType.SubTitle, 0, this.totalCount);
-                    break;
-                case "SegmentId":
-                    this.chartScoreData = Glob.ScoreHistory.GetScoreFromSegmentId(this.dataType.SegmentId, 0, this.totalCount);
-                    break;
-            }
+            this.chartScoreData = Glob.ScoreHistory.GetScoresFiltered(
+                this.dataType.Date, this.dataType.EndDate, this.dataType.Title, this.dataType.SegmentId, 0, this.totalCount);
         }
 
         private double GetDisplaySpeed(StorageDataSet.ScoreRow scoreRow)
@@ -655,7 +563,18 @@ namespace WindowsFormsApplication2.History
             string articleTitle = this.gridHandler.GetArticleTitle();
             if (!string.IsNullOrEmpty(articleTitle))
             {
-                this.ShowDataFromTitle(articleTitle);
+                this.dataType.Title = articleTitle;
+                this.suppressArticleListEvent = true;
+                if (this.articleListBox.Items.Contains(articleTitle))
+                {
+                    this.articleListBox.SelectedItem = articleTitle;
+                }
+                else
+                {
+                    this.articleListBox.SelectedIndex = 0;
+                }
+                this.suppressArticleListEvent = false;
+                this.RefreshData();
             }
         }
 
@@ -664,7 +583,8 @@ namespace WindowsFormsApplication2.History
             long segmentId = this.gridHandler.GetSegmentId(this.currentScoreData);
             if (segmentId != -1)
             {
-                this.ShowDataFromSegment(segmentId);
+                this.dataType.SegmentId = segmentId;
+                this.RefreshData();
             }
         }
 
@@ -679,48 +599,15 @@ namespace WindowsFormsApplication2.History
         }
         #endregion
 
-        #region 搜索标题框
-        private void SearchButton_Click(object sender, EventArgs e)
-        {
-            string sText = this.SearchTextBox.Text.Trim();
-            if (!string.IsNullOrEmpty(sText))
-            {
-                this.ShowDataFromSubTitle(sText);
-            }
-        }
-
-        private void SearchTextBox_KeyDown(object sender, KeyEventArgs e)
-        {
-            if (e.KeyCode == Keys.Enter)
-            {
-                this.SearchButton.PerformClick();
-            }
-        }
-        #endregion
-
         #region 跳转页数处理
         private void JumpPageHandler(int pageNum)
         {
             this.ClearGridData();
             this.currentPage = pageNum;
             this.PageNumTextBox.Text = pageNum.ToString();
-            switch (this.dataType.Cur)
-            {
-                case "Date":
-                    this.currentScoreData = this.dataType.Date == this.dataType.EndDate
-                        ? Glob.ScoreHistory.GetScoreFromDate(this.dataType.Date, (pageNum - 1) * PageSize, PageSize)
-                        : Glob.ScoreHistory.GetScoreFromDateRange(this.dataType.Date, this.dataType.EndDate, (pageNum - 1) * PageSize, PageSize);
-                    break;
-                case "Title":
-                    this.currentScoreData = Glob.ScoreHistory.GetScoreFromTitle(this.dataType.Title, (pageNum - 1) * PageSize, PageSize);
-                    break;
-                case "SubTitle":
-                    this.currentScoreData = Glob.ScoreHistory.GetScoreFromSubTitle(this.dataType.SubTitle, (pageNum - 1) * PageSize, PageSize);
-                    break;
-                case "SegmentId":
-                    this.currentScoreData = Glob.ScoreHistory.GetScoreFromSegmentId(this.dataType.SegmentId, (pageNum - 1) * PageSize, PageSize);
-                    break;
-            }
+            this.currentScoreData = Glob.ScoreHistory.GetScoresFiltered(
+                this.dataType.Date, this.dataType.EndDate, this.dataType.Title, this.dataType.SegmentId,
+                (pageNum - 1) * PageSize, PageSize);
             this.ReloadChartScoreData();
             this.ShowGridData();
             this.RefreshChart();
@@ -790,6 +677,29 @@ namespace WindowsFormsApplication2.History
         #endregion
 
         #region 删除数据
+        private void RefreshAfterDelete()
+        {
+            this.totalCount = Glob.ScoreHistory.GetScoreCountFiltered(
+                this.dataType.Date, this.dataType.EndDate, this.dataType.Title, this.dataType.SegmentId);
+            if (this.totalCount <= 0)
+            {
+                this.totalCount = 0;
+                this.currentPage = 0;
+                this.UpdateGridToolBar();
+                this.ClearGridData();
+            }
+            else
+            {
+                if (this.currentPage > this.TotalPage)
+                {
+                    this.currentPage = this.TotalPage;
+                }
+                this.UpdateGridToolBar();
+                this.JumpPageHandler(this.currentPage);
+            }
+            this.LoadArticleList();
+        }
+
         private void DeleteItemToolStripMenuItem_Click(object sender, EventArgs e)
         {
             string scoreTime = this.gridHandler.MenuGetScoreTime();
@@ -800,23 +710,7 @@ namespace WindowsFormsApplication2.History
                     case DialogResult.Yes:
                         if (Glob.ScoreHistory.DeleteScoreItemByTime(scoreTime))
                         {
-                            this.totalCount--;
-                            if (this.totalCount <= 0)
-                            {
-                                this.totalCount = 0;
-                                this.currentPage = 0;
-                                this.UpdateGridToolBar();
-                                this.ClearGridData();
-                            }
-                            else
-                            {
-                                if (this.currentPage > this.TotalPage)
-                                {
-                                    this.currentPage = this.TotalPage;
-                                }
-                                this.UpdateGridToolBar();
-                                this.JumpPageHandler(this.currentPage);
-                            }
+                            this.RefreshAfterDelete();
                         }
                         break;
                     case DialogResult.No:
@@ -834,39 +728,7 @@ namespace WindowsFormsApplication2.History
                 {
                     case DialogResult.Yes:
                         Glob.ScoreHistory.DeleteScoreItemBySegmentId(segmentId);
-                        switch (this.dataType.Cur)
-                        {
-                            case "Date":
-                                this.totalCount = this.dataType.Date == this.dataType.EndDate
-                                    ? Glob.ScoreHistory.GetScoreCountFromDate(this.dataType.Date)
-                                    : Glob.ScoreHistory.GetScoreCountFromDateRange(this.dataType.Date, this.dataType.EndDate);
-                                break;
-                            case "Title":
-                                this.totalCount = Glob.ScoreHistory.GetScoreCountFromTitle(this.dataType.Title);
-                                break;
-                            case "SubTitle":
-                                this.totalCount = Glob.ScoreHistory.GetScoreCountFromSubTitle(this.dataType.SubTitle);
-                                break;
-                            case "SegmentId":
-                                this.totalCount = Glob.ScoreHistory.GetScoreCountFromSegmentId(this.dataType.SegmentId);
-                                break;
-                        }
-
-                        if (this.totalCount == 0)
-                        {
-                            this.currentPage = 0;
-                            this.UpdateGridToolBar();
-                            this.ClearGridData();
-                        }
-                        else
-                        {
-                            if (this.currentPage > this.TotalPage)
-                            {
-                                this.currentPage = this.TotalPage;
-                            }
-                            this.UpdateGridToolBar();
-                            this.JumpPageHandler(this.currentPage);
-                        }
+                        this.RefreshAfterDelete();
                         break;
                     case DialogResult.No:
                         break;
@@ -893,23 +755,7 @@ namespace WindowsFormsApplication2.History
                         Glob.ScoreHistory.CleanDisk();
                     }
 
-                    this.totalCount -= deleteCount;
-                    if (this.totalCount <= 0)
-                    {
-                        this.totalCount = 0;
-                        this.currentPage = 0;
-                        this.UpdateGridToolBar();
-                        this.ClearGridData();
-                    }
-                    else
-                    {
-                        if (this.currentPage > this.TotalPage)
-                        {
-                            this.currentPage = this.TotalPage;
-                        }
-                        this.UpdateGridToolBar();
-                        this.JumpPageHandler(this.currentPage);
-                    }
+                    this.RefreshAfterDelete();
                     break;
                 case DialogResult.No:
                     break;
@@ -920,12 +766,16 @@ namespace WindowsFormsApplication2.History
         #region 选择日期
         private void MonthCalendar_DateSelected(object sender, DateRangeEventArgs e)
         {
-            this.ShowDataFromDateRange(e.Start, e.End);
+            this.dataType.Date = e.Start;
+            this.dataType.EndDate = e.End;
+            this.RefreshData();
         }
 
         private void MonthCalendar_HigherViewRangeSelected(object sender, DateRangeEventArgs e)
         {
-            this.ShowDataFromDateRange(e.Start, e.End);
+            this.dataType.Date = e.Start;
+            this.dataType.EndDate = e.End;
+            this.RefreshData();
         }
         #endregion
 
@@ -993,13 +843,13 @@ namespace WindowsFormsApplication2.History
                         if (isRangeDelete)
                         {
                             Glob.ScoreHistory.DeleteScoreItemByDateRange(this.dataType.Date, this.dataType.EndDate);
-                            this.ShowDataFromDateRange(this.dataType.Date, this.dataType.EndDate);
                         }
                         else
                         {
                             Glob.ScoreHistory.DeleteScoreItemByDate(dateVal);
-                            this.ShowDataFromDate(this.dataType.Date);
                         }
+                        this.RefreshData();
+                        this.LoadArticleList();
                         break;
                     case DialogResult.No:
                         break;
@@ -1034,7 +884,12 @@ namespace WindowsFormsApplication2.History
             {
                 case DialogResult.Yes:
                     Glob.ScoreHistory.DeleteAllScore();
-                    this.ShowDataFromDate(DateTime.Now);
+                    this.dataType.Date = DateTime.Now;
+                    this.dataType.EndDate = DateTime.Now;
+                    this.dataType.Title = null;
+                    this.dataType.SegmentId = null;
+                    this.LoadArticleList();
+                    this.RefreshData();
                     break;
                 case DialogResult.No:
                     break;

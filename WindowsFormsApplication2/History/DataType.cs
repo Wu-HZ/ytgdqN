@@ -1,40 +1,15 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 
 namespace WindowsFormsApplication2.History
 {
     internal class DataType
     {
-        /// <summary>
-        /// 当前类别
-        /// </summary>
-        public string Cur { get; set; }
-
-        /// <summary>
-        /// 时间
-        /// </summary>
         public DateTime Date { get; set; }
 
-        /// <summary>
-        /// 结束时间
-        /// </summary>
         public DateTime EndDate { get; set; }
 
-        /// <summary>
-        /// 标题
-        /// </summary>
         public string Title { get; set; }
 
-        /// <summary>
-        /// 标题片段
-        /// </summary>
-        public string SubTitle { get; set; }
-
-        /// <summary>
-        /// 文段 id
-        /// </summary>
-        public long SegmentId { get; set; }
+        public long? SegmentId { get; set; }
     }
 }

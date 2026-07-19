@@ -67,24 +67,22 @@
             this.DeleteMonthToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.DeleteYearToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.DeleteAllToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.PreviewGroupBox = new System.Windows.Forms.GroupBox();
             this.PreviewRichTextBox = new System.Windows.Forms.RichTextBox();
-            this.splitContainer1 = new System.Windows.Forms.SplitContainer();
-            this.ToolPanel = new System.Windows.Forms.Panel();
-            this.LastPageButton = new System.Windows.Forms.Button();
-            this.NextPageButton = new System.Windows.Forms.Button();
-            this.PrePageButton = new System.Windows.Forms.Button();
-            this.FirstPageButton = new System.Windows.Forms.Button();
-            this.JumpPageButton = new System.Windows.Forms.Button();
-            this.TotalPageNumLabel = new System.Windows.Forms.Label();
-            this.PageNumTextBox = new System.Windows.Forms.TextBox();
+            this.PreviewGroupBox = new System.Windows.Forms.GroupBox();
+            this.SpeedChart = new System.Windows.Forms.DataVisualization.Charting.Chart();
+            this.TrendChartCheckBox = new System.Windows.Forms.CheckBox();
+            this.articleListLabel = new System.Windows.Forms.Label();
+            this.articleListBox = new System.Windows.Forms.ListBox();
+            this.ResultLabel = new System.Windows.Forms.Label();
             this.CountLabel = new System.Windows.Forms.Label();
             this.label1 = new System.Windows.Forms.Label();
-            this.SearchButton = new System.Windows.Forms.Button();
-            this.SearchTextBox = new System.Windows.Forms.TextBox();
-            this.ResultLabel = new System.Windows.Forms.Label();
-            this.TrendChartCheckBox = new System.Windows.Forms.CheckBox();
-            this.SpeedChart = new System.Windows.Forms.DataVisualization.Charting.Chart();
+            this.FirstPageButton = new System.Windows.Forms.Button();
+            this.PrePageButton = new System.Windows.Forms.Button();
+            this.PageNumTextBox = new System.Windows.Forms.TextBox();
+            this.TotalPageNumLabel = new System.Windows.Forms.Label();
+            this.JumpPageButton = new System.Windows.Forms.Button();
+            this.NextPageButton = new System.Windows.Forms.Button();
+            this.LastPageButton = new System.Windows.Forms.Button();
             this.dataGridView1 = new System.Windows.Forms.DataGridView();
             this.HistoryContextMenuStrip = new System.Windows.Forms.ContextMenuStrip(this.components);
             this.ItemToolStripTextBox = new System.Windows.Forms.ToolStripTextBox();
@@ -133,16 +131,26 @@
             this.用时 = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.类别 = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.标题 = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.tableLayoutPanel1 = new System.Windows.Forms.TableLayoutPanel();
+            this.leftPanel = new System.Windows.Forms.Panel();
+            this.middlePanel = new System.Windows.Forms.Panel();
+            this.filterInfoPanel = new System.Windows.Forms.Panel();
+            this.paginationPanel = new System.Windows.Forms.Panel();
+            this.rightSplitContainer = new System.Windows.Forms.SplitContainer();
             this.MonthCalendarContextMenuStrip.SuspendLayout();
             this.PreviewGroupBox.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
-            this.splitContainer1.Panel1.SuspendLayout();
-            this.splitContainer1.Panel2.SuspendLayout();
-            this.splitContainer1.SuspendLayout();
-            this.ToolPanel.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.SpeedChart)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.dataGridView1)).BeginInit();
             this.HistoryContextMenuStrip.SuspendLayout();
+            this.tableLayoutPanel1.SuspendLayout();
+            this.leftPanel.SuspendLayout();
+            this.middlePanel.SuspendLayout();
+            this.filterInfoPanel.SuspendLayout();
+            this.paginationPanel.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.rightSplitContainer)).BeginInit();
+            this.rightSplitContainer.Panel1.SuspendLayout();
+            this.rightSplitContainer.Panel2.SuspendLayout();
+            this.rightSplitContainer.SuspendLayout();
             this.SuspendLayout();
             // 
             // MonthCalendar
@@ -200,164 +208,115 @@
             this.DeleteAllToolStripMenuItem.Text = "删除所有历史记录";
             this.DeleteAllToolStripMenuItem.Click += new System.EventHandler(this.DeleteAllToolStripMenuItem_Click);
             // 
-            // PreviewGroupBox
-            // 
-            this.PreviewGroupBox.Controls.Add(this.PreviewRichTextBox);
-            this.PreviewGroupBox.Font = new System.Drawing.Font("微软雅黑", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
-            this.PreviewGroupBox.Location = new System.Drawing.Point(228, 4);
-            this.PreviewGroupBox.Name = "PreviewGroupBox";
-            this.PreviewGroupBox.Size = new System.Drawing.Size(462, 180);
-            this.PreviewGroupBox.TabIndex = 1;
-            this.PreviewGroupBox.TabStop = false;
-            this.PreviewGroupBox.Text = "文段预览";
-            // 
             // PreviewRichTextBox
             // 
-            this.PreviewRichTextBox.Location = new System.Drawing.Point(7, 21);
+            this.PreviewRichTextBox.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.PreviewRichTextBox.Location = new System.Drawing.Point(3, 17);
             this.PreviewRichTextBox.Name = "PreviewRichTextBox";
             this.PreviewRichTextBox.ReadOnly = true;
-            this.PreviewRichTextBox.Size = new System.Drawing.Size(449, 153);
+            this.PreviewRichTextBox.Size = new System.Drawing.Size(0, 0);
             this.PreviewRichTextBox.TabIndex = 0;
             this.PreviewRichTextBox.TabStop = false;
             this.PreviewRichTextBox.Text = "";
             // 
-            // splitContainer1
+            // PreviewGroupBox
             // 
-            this.splitContainer1.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.splitContainer1.FixedPanel = System.Windows.Forms.FixedPanel.Panel1;
-            this.splitContainer1.IsSplitterFixed = true;
-            this.splitContainer1.Location = new System.Drawing.Point(0, 0);
-            this.splitContainer1.Name = "splitContainer1";
-            this.splitContainer1.Orientation = System.Windows.Forms.Orientation.Horizontal;
+            this.PreviewGroupBox.Controls.Add(this.PreviewRichTextBox);
+            this.PreviewGroupBox.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.PreviewGroupBox.Font = new System.Drawing.Font("微软雅黑", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this.PreviewGroupBox.Location = new System.Drawing.Point(0, 0);
+            this.PreviewGroupBox.Name = "PreviewGroupBox";
+            this.PreviewGroupBox.Size = new System.Drawing.Size(100, 100);
+            this.PreviewGroupBox.TabIndex = 1;
+            this.PreviewGroupBox.TabStop = false;
+            this.PreviewGroupBox.Text = "文段预览";
             // 
-            // splitContainer1.Panel1
+            // SpeedChart
             // 
-            this.splitContainer1.Panel1.BackColor = System.Drawing.SystemColors.AppWorkspace;
-            this.splitContainer1.Panel1.Controls.Add(this.ToolPanel);
-            this.splitContainer1.Panel1.Controls.Add(this.SpeedChart);
-            this.splitContainer1.Panel1.Controls.Add(this.PreviewGroupBox);
-            this.splitContainer1.Panel1.Controls.Add(this.MonthCalendar);
+            this.SpeedChart.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.SpeedChart.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(150)))), ((int)(((byte)(150)))), ((int)(((byte)(150)))));
+            chartArea1.AxisX.IntervalAutoMode = System.Windows.Forms.DataVisualization.Charting.IntervalAutoMode.VariableCount;
+            chartArea1.AxisX.LabelAutoFitMaxFontSize = 7;
+            chartArea1.AxisX.LineColor = System.Drawing.Color.White;
+            chartArea1.AxisX.MajorGrid.LineColor = System.Drawing.Color.FromArgb(((int)(((byte)(127)))), ((int)(((byte)(127)))), ((int)(((byte)(127)))));
+            chartArea1.AxisX.MajorTickMark.LineColor = System.Drawing.Color.FromArgb(((int)(((byte)(10)))), ((int)(((byte)(10)))), ((int)(((byte)(35)))));
+            chartArea1.AxisX.Minimum = 1D;
+            chartArea1.AxisX2.LineDashStyle = System.Windows.Forms.DataVisualization.Charting.ChartDashStyle.Dash;
+            chartArea1.AxisY.IntervalAutoMode = System.Windows.Forms.DataVisualization.Charting.IntervalAutoMode.VariableCount;
+            chartArea1.AxisY.LabelAutoFitMaxFontSize = 7;
+            chartArea1.AxisY.LineColor = System.Drawing.Color.White;
+            chartArea1.AxisY.MajorGrid.LineColor = System.Drawing.Color.FromArgb(((int)(((byte)(127)))), ((int)(((byte)(127)))), ((int)(((byte)(127)))));
+            chartArea1.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(150)))), ((int)(((byte)(150)))), ((int)(((byte)(150)))));
+            chartArea1.Name = "ChartArea1";
+            this.SpeedChart.ChartAreas.Add(chartArea1);
+            this.SpeedChart.Location = new System.Drawing.Point(0, 0);
+            this.SpeedChart.Name = "SpeedChart";
+            series1.BackSecondaryColor = System.Drawing.Color.Black;
+            series1.BorderWidth = 2;
+            series1.ChartArea = "ChartArea1";
+            series1.ChartType = System.Windows.Forms.DataVisualization.Charting.SeriesChartType.SplineArea;
+            series1.Color = System.Drawing.Color.White;
+            series1.Name = "Series1";
+            this.SpeedChart.Series.Add(series1);
+            this.SpeedChart.Size = new System.Drawing.Size(100, 100);
+            this.SpeedChart.TabIndex = 2;
+            this.SpeedChart.TabStop = false;
+            this.SpeedChart.Text = "chart1";
             // 
-            // splitContainer1.Panel2
+            // TrendChartCheckBox
             // 
-            this.splitContainer1.Panel2.AutoScroll = true;
-            this.splitContainer1.Panel2.Controls.Add(this.dataGridView1);
-            this.splitContainer1.Size = new System.Drawing.Size(1184, 450);
-            this.splitContainer1.SplitterDistance = 218;
-            this.splitContainer1.TabIndex = 1;
-            this.splitContainer1.TabStop = false;
+            this.TrendChartCheckBox.AutoSize = true;
+            this.TrendChartCheckBox.Checked = true;
+            this.TrendChartCheckBox.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.TrendChartCheckBox.Dock = System.Windows.Forms.DockStyle.Bottom;
+            this.TrendChartCheckBox.Location = new System.Drawing.Point(0, -16);
+            this.TrendChartCheckBox.Name = "TrendChartCheckBox";
+            this.TrendChartCheckBox.Size = new System.Drawing.Size(100, 16);
+            this.TrendChartCheckBox.TabIndex = 12;
+            this.TrendChartCheckBox.TabStop = false;
+            this.TrendChartCheckBox.Text = "长期趋势";
+            this.toolTip1.SetToolTip(this.TrendChartCheckBox, "勾选后显示当前筛选结果的长期趋势，取消后显示当前选中记录的单次速度曲线");
+            this.TrendChartCheckBox.UseVisualStyleBackColor = true;
+            this.TrendChartCheckBox.CheckedChanged += new System.EventHandler(this.TrendChartCheckBox_CheckedChanged);
             // 
-            // ToolPanel
+            // articleListLabel
             // 
-            this.ToolPanel.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            this.articleListLabel.AutoSize = true;
+            this.articleListLabel.Font = new System.Drawing.Font("微软雅黑", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this.articleListLabel.ForeColor = System.Drawing.Color.White;
+            this.articleListLabel.Location = new System.Drawing.Point(5, 192);
+            this.articleListLabel.Name = "articleListLabel";
+            this.articleListLabel.Size = new System.Drawing.Size(56, 17);
+            this.articleListLabel.TabIndex = 1;
+            this.articleListLabel.Text = "跟打文章";
+            // 
+            // articleListBox
+            // 
+            this.articleListBox.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
+            | System.Windows.Forms.AnchorStyles.Left)
             | System.Windows.Forms.AnchorStyles.Right)));
-            this.ToolPanel.BackColor = System.Drawing.SystemColors.Control;
-            this.ToolPanel.Controls.Add(this.LastPageButton);
-            this.ToolPanel.Controls.Add(this.NextPageButton);
-            this.ToolPanel.Controls.Add(this.PrePageButton);
-            this.ToolPanel.Controls.Add(this.FirstPageButton);
-            this.ToolPanel.Controls.Add(this.JumpPageButton);
-            this.ToolPanel.Controls.Add(this.TotalPageNumLabel);
-            this.ToolPanel.Controls.Add(this.PageNumTextBox);
-            this.ToolPanel.Controls.Add(this.CountLabel);
-            this.ToolPanel.Controls.Add(this.label1);
-            this.ToolPanel.Controls.Add(this.SearchButton);
-            this.ToolPanel.Controls.Add(this.SearchTextBox);
-            this.ToolPanel.Controls.Add(this.ResultLabel);
-            this.ToolPanel.Controls.Add(this.TrendChartCheckBox);
-            this.ToolPanel.Location = new System.Drawing.Point(5, 190);
-            this.ToolPanel.Name = "ToolPanel";
-            this.ToolPanel.Size = new System.Drawing.Size(1173, 25);
-            this.ToolPanel.TabIndex = 3;
+            this.articleListBox.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(61)))), ((int)(((byte)(61)))), ((int)(((byte)(61)))));
+            this.articleListBox.BorderStyle = System.Windows.Forms.BorderStyle.None;
+            this.articleListBox.ForeColor = System.Drawing.Color.White;
+            this.articleListBox.FormattingEnabled = true;
+            this.articleListBox.ItemHeight = 12;
+            this.articleListBox.Location = new System.Drawing.Point(5, 212);
+            this.articleListBox.Name = "articleListBox";
+            this.articleListBox.Size = new System.Drawing.Size(200, 216);
+            this.articleListBox.TabIndex = 2;
+            this.articleListBox.TabStop = false;
+            this.articleListBox.SelectedIndexChanged += new System.EventHandler(this.ArticleListBox_SelectedIndexChanged);
             // 
-            // LastPageButton
+            // ResultLabel
             // 
-            this.LastPageButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.LastPageButton.Location = new System.Drawing.Point(1012, 1);
-            this.LastPageButton.Name = "LastPageButton";
-            this.LastPageButton.Size = new System.Drawing.Size(39, 23);
-            this.LastPageButton.TabIndex = 11;
-            this.LastPageButton.TabStop = false;
-            this.LastPageButton.Text = "末页";
-            this.toolTip1.SetToolTip(this.LastPageButton, "跳转到最后一页");
-            this.LastPageButton.UseVisualStyleBackColor = true;
-            this.LastPageButton.Click += new System.EventHandler(this.LastPageButton_Click);
-            // 
-            // NextPageButton
-            // 
-            this.NextPageButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.NextPageButton.Location = new System.Drawing.Point(956, 1);
-            this.NextPageButton.Name = "NextPageButton";
-            this.NextPageButton.Size = new System.Drawing.Size(50, 23);
-            this.NextPageButton.TabIndex = 10;
-            this.NextPageButton.TabStop = false;
-            this.NextPageButton.Text = "下一页";
-            this.toolTip1.SetToolTip(this.NextPageButton, "跳转到下一页");
-            this.NextPageButton.UseVisualStyleBackColor = true;
-            this.NextPageButton.Click += new System.EventHandler(this.NextPageButton_Click);
-            // 
-            // PrePageButton
-            // 
-            this.PrePageButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.PrePageButton.Location = new System.Drawing.Point(897, 1);
-            this.PrePageButton.Name = "PrePageButton";
-            this.PrePageButton.Size = new System.Drawing.Size(53, 23);
-            this.PrePageButton.TabIndex = 9;
-            this.PrePageButton.TabStop = false;
-            this.PrePageButton.Text = "上一页";
-            this.toolTip1.SetToolTip(this.PrePageButton, "跳转到上一页");
-            this.PrePageButton.UseVisualStyleBackColor = true;
-            this.PrePageButton.Click += new System.EventHandler(this.PrePageButton_Click);
-            // 
-            // FirstPageButton
-            // 
-            this.FirstPageButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.FirstPageButton.Location = new System.Drawing.Point(852, 1);
-            this.FirstPageButton.Name = "FirstPageButton";
-            this.FirstPageButton.Size = new System.Drawing.Size(39, 23);
-            this.FirstPageButton.TabIndex = 8;
-            this.FirstPageButton.TabStop = false;
-            this.FirstPageButton.Text = "首页";
-            this.toolTip1.SetToolTip(this.FirstPageButton, "跳转第一页");
-            this.FirstPageButton.UseVisualStyleBackColor = true;
-            this.FirstPageButton.Click += new System.EventHandler(this.FirstPageButton_Click);
-            // 
-            // JumpPageButton
-            // 
-            this.JumpPageButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.JumpPageButton.Location = new System.Drawing.Point(788, 1);
-            this.JumpPageButton.Name = "JumpPageButton";
-            this.JumpPageButton.Size = new System.Drawing.Size(39, 23);
-            this.JumpPageButton.TabIndex = 7;
-            this.JumpPageButton.TabStop = false;
-            this.JumpPageButton.Text = "跳转";
-            this.toolTip1.SetToolTip(this.JumpPageButton, "跳转到指定页数");
-            this.JumpPageButton.UseVisualStyleBackColor = true;
-            this.JumpPageButton.Click += new System.EventHandler(this.JumpPageButton_Click);
-            // 
-            // TotalPageNumLabel
-            // 
-            this.TotalPageNumLabel.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.TotalPageNumLabel.Location = new System.Drawing.Point(729, 4);
-            this.TotalPageNumLabel.Margin = new System.Windows.Forms.Padding(0);
-            this.TotalPageNumLabel.Name = "TotalPageNumLabel";
-            this.TotalPageNumLabel.Padding = new System.Windows.Forms.Padding(0, 2, 0, 0);
-            this.TotalPageNumLabel.Size = new System.Drawing.Size(56, 18);
-            this.TotalPageNumLabel.TabIndex = 6;
-            this.TotalPageNumLabel.Text = "label2";
-            this.toolTip1.SetToolTip(this.TotalPageNumLabel, "总页数");
-            // 
-            // PageNumTextBox
-            // 
-            this.PageNumTextBox.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.PageNumTextBox.Location = new System.Drawing.Point(691, 2);
-            this.PageNumTextBox.Name = "PageNumTextBox";
-            this.PageNumTextBox.Size = new System.Drawing.Size(35, 21);
-            this.PageNumTextBox.TabIndex = 5;
-            this.PageNumTextBox.TabStop = false;
-            this.PageNumTextBox.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
-            this.toolTip1.SetToolTip(this.PageNumTextBox, "当前页数");
-            this.PageNumTextBox.KeyPress += new System.Windows.Forms.KeyPressEventHandler(this.PageNumTextBox_KeyPress);
+            this.ResultLabel.AutoSize = true;
+            this.ResultLabel.ForeColor = System.Drawing.Color.OliveDrab;
+            this.ResultLabel.Location = new System.Drawing.Point(6, 4);
+            this.ResultLabel.Name = "ResultLabel";
+            this.ResultLabel.Padding = new System.Windows.Forms.Padding(0, 2, 0, 0);
+            this.ResultLabel.TabIndex = 0;
+            this.ResultLabel.Text = "label1";
+            this.toolTip1.SetToolTip(this.ResultLabel, "所展示的数据类别");
             // 
             // CountLabel
             // 
@@ -379,90 +338,86 @@
             this.label1.TabIndex = 3;
             this.label1.Text = "总结果数：";
             // 
-            // SearchButton
+            // FirstPageButton
             // 
-            this.SearchButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.SearchButton.BackgroundImage = ((System.Drawing.Image)(resources.GetObject("SearchButton.BackgroundImage")));
-            this.SearchButton.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
-            this.SearchButton.Location = new System.Drawing.Point(661, 1);
-            this.SearchButton.Name = "SearchButton";
-            this.SearchButton.Size = new System.Drawing.Size(23, 23);
-            this.SearchButton.TabIndex = 2;
-            this.SearchButton.TabStop = false;
-            this.toolTip1.SetToolTip(this.SearchButton, "搜索");
-            this.SearchButton.UseVisualStyleBackColor = true;
-            this.SearchButton.Click += new System.EventHandler(this.SearchButton_Click);
+            this.FirstPageButton.Location = new System.Drawing.Point(3, 3);
+            this.FirstPageButton.Name = "FirstPageButton";
+            this.FirstPageButton.Size = new System.Drawing.Size(39, 23);
+            this.FirstPageButton.TabIndex = 8;
+            this.FirstPageButton.TabStop = false;
+            this.FirstPageButton.Text = "首页";
+            this.toolTip1.SetToolTip(this.FirstPageButton, "跳转第一页");
+            this.FirstPageButton.UseVisualStyleBackColor = true;
+            this.FirstPageButton.Click += new System.EventHandler(this.FirstPageButton_Click);
             // 
-            // SearchTextBox
+            // PrePageButton
             // 
-            this.SearchTextBox.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this.SearchTextBox.Location = new System.Drawing.Point(498, 2);
-            this.SearchTextBox.Name = "SearchTextBox";
-            this.SearchTextBox.Size = new System.Drawing.Size(161, 21);
-            this.SearchTextBox.TabIndex = 1;
-            this.SearchTextBox.TabStop = false;
-            this.toolTip1.SetToolTip(this.SearchTextBox, "输入标题进行搜索");
-            this.SearchTextBox.KeyDown += new System.Windows.Forms.KeyEventHandler(this.SearchTextBox_KeyDown);
+            this.PrePageButton.Location = new System.Drawing.Point(48, 3);
+            this.PrePageButton.Name = "PrePageButton";
+            this.PrePageButton.Size = new System.Drawing.Size(53, 23);
+            this.PrePageButton.TabIndex = 9;
+            this.PrePageButton.TabStop = false;
+            this.PrePageButton.Text = "上一页";
+            this.toolTip1.SetToolTip(this.PrePageButton, "跳转到上一页");
+            this.PrePageButton.UseVisualStyleBackColor = true;
+            this.PrePageButton.Click += new System.EventHandler(this.PrePageButton_Click);
             // 
-            // ResultLabel
+            // PageNumTextBox
             // 
-            this.ResultLabel.AutoSize = true;
-            this.ResultLabel.ForeColor = System.Drawing.Color.OliveDrab;
-            this.ResultLabel.Location = new System.Drawing.Point(6, 4);
-            this.ResultLabel.Name = "ResultLabel";
-            this.ResultLabel.Padding = new System.Windows.Forms.Padding(0, 2, 0, 0);
-            this.ResultLabel.TabIndex = 0;
-            this.ResultLabel.Text = "label1";
-            this.toolTip1.SetToolTip(this.ResultLabel, "所展示的数据类别");
+            this.PageNumTextBox.Location = new System.Drawing.Point(107, 4);
+            this.PageNumTextBox.Name = "PageNumTextBox";
+            this.PageNumTextBox.Size = new System.Drawing.Size(35, 21);
+            this.PageNumTextBox.TabIndex = 5;
+            this.PageNumTextBox.TabStop = false;
+            this.PageNumTextBox.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
+            this.toolTip1.SetToolTip(this.PageNumTextBox, "当前页数");
+            this.PageNumTextBox.KeyPress += new System.Windows.Forms.KeyPressEventHandler(this.PageNumTextBox_KeyPress);
             // 
-            // TrendChartCheckBox
+            // TotalPageNumLabel
             // 
-            this.TrendChartCheckBox.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.TrendChartCheckBox.AutoSize = true;
-            this.TrendChartCheckBox.Checked = true;
-            this.TrendChartCheckBox.CheckState = System.Windows.Forms.CheckState.Checked;
-            this.TrendChartCheckBox.Location = new System.Drawing.Point(1060, 5);
-            this.TrendChartCheckBox.Name = "TrendChartCheckBox";
-            this.TrendChartCheckBox.Size = new System.Drawing.Size(72, 16);
-            this.TrendChartCheckBox.TabIndex = 12;
-            this.TrendChartCheckBox.TabStop = false;
-            this.TrendChartCheckBox.Text = "长期趋势";
-            this.toolTip1.SetToolTip(this.TrendChartCheckBox, "勾选后显示当前筛选结果的长期趋势，取消后显示当前选中记录的单次速度曲线");
-            this.TrendChartCheckBox.UseVisualStyleBackColor = true;
-            this.TrendChartCheckBox.CheckedChanged += new System.EventHandler(this.TrendChartCheckBox_CheckedChanged);
+            this.TotalPageNumLabel.Location = new System.Drawing.Point(148, 6);
+            this.TotalPageNumLabel.Margin = new System.Windows.Forms.Padding(0);
+            this.TotalPageNumLabel.Name = "TotalPageNumLabel";
+            this.TotalPageNumLabel.Size = new System.Drawing.Size(56, 18);
+            this.TotalPageNumLabel.TabIndex = 6;
+            this.TotalPageNumLabel.Text = "label2";
+            this.toolTip1.SetToolTip(this.TotalPageNumLabel, "总页数");
             // 
-            // SpeedChart
+            // JumpPageButton
             // 
-            this.SpeedChart.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)));
-            this.SpeedChart.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(150)))), ((int)(((byte)(150)))), ((int)(((byte)(150)))));
-            chartArea1.AxisX.IntervalAutoMode = System.Windows.Forms.DataVisualization.Charting.IntervalAutoMode.VariableCount;
-            chartArea1.AxisX.LabelAutoFitMaxFontSize = 7;
-            chartArea1.AxisX.LineColor = System.Drawing.Color.White;
-            chartArea1.AxisX.MajorGrid.LineColor = System.Drawing.Color.FromArgb(((int)(((byte)(127)))), ((int)(((byte)(127)))), ((int)(((byte)(127)))));
-            chartArea1.AxisX.MajorTickMark.LineColor = System.Drawing.Color.FromArgb(((int)(((byte)(10)))), ((int)(((byte)(10)))), ((int)(((byte)(35)))));
-            chartArea1.AxisX.Minimum = 1D;
-            chartArea1.AxisX2.LineDashStyle = System.Windows.Forms.DataVisualization.Charting.ChartDashStyle.Dash;
-            chartArea1.AxisY.IntervalAutoMode = System.Windows.Forms.DataVisualization.Charting.IntervalAutoMode.VariableCount;
-            chartArea1.AxisY.LabelAutoFitMaxFontSize = 7;
-            chartArea1.AxisY.LineColor = System.Drawing.Color.White;
-            chartArea1.AxisY.MajorGrid.LineColor = System.Drawing.Color.FromArgb(((int)(((byte)(127)))), ((int)(((byte)(127)))), ((int)(((byte)(127)))));
-            chartArea1.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(150)))), ((int)(((byte)(150)))), ((int)(((byte)(150)))));
-            chartArea1.Name = "ChartArea1";
-            this.SpeedChart.ChartAreas.Add(chartArea1);
-            this.SpeedChart.Location = new System.Drawing.Point(695, 4);
-            this.SpeedChart.Name = "SpeedChart";
-            series1.BackSecondaryColor = System.Drawing.Color.Black;
-            series1.BorderWidth = 2;
-            series1.ChartArea = "ChartArea1";
-            series1.ChartType = System.Windows.Forms.DataVisualization.Charting.SeriesChartType.SplineArea;
-            series1.Color = System.Drawing.Color.White;
-            series1.Name = "Series1";
-            this.SpeedChart.Series.Add(series1);
-            this.SpeedChart.Size = new System.Drawing.Size(483, 180);
-            this.SpeedChart.TabIndex = 2;
-            this.SpeedChart.TabStop = false;
-            this.SpeedChart.Text = "chart1";
+            this.JumpPageButton.Location = new System.Drawing.Point(210, 3);
+            this.JumpPageButton.Name = "JumpPageButton";
+            this.JumpPageButton.Size = new System.Drawing.Size(39, 23);
+            this.JumpPageButton.TabIndex = 7;
+            this.JumpPageButton.TabStop = false;
+            this.JumpPageButton.Text = "跳转";
+            this.toolTip1.SetToolTip(this.JumpPageButton, "跳转到指定页数");
+            this.JumpPageButton.UseVisualStyleBackColor = true;
+            this.JumpPageButton.Click += new System.EventHandler(this.JumpPageButton_Click);
+            // 
+            // NextPageButton
+            // 
+            this.NextPageButton.Location = new System.Drawing.Point(255, 3);
+            this.NextPageButton.Name = "NextPageButton";
+            this.NextPageButton.Size = new System.Drawing.Size(50, 23);
+            this.NextPageButton.TabIndex = 10;
+            this.NextPageButton.TabStop = false;
+            this.NextPageButton.Text = "下一页";
+            this.toolTip1.SetToolTip(this.NextPageButton, "跳转到下一页");
+            this.NextPageButton.UseVisualStyleBackColor = true;
+            this.NextPageButton.Click += new System.EventHandler(this.NextPageButton_Click);
+            // 
+            // LastPageButton
+            // 
+            this.LastPageButton.Location = new System.Drawing.Point(311, 3);
+            this.LastPageButton.Name = "LastPageButton";
+            this.LastPageButton.Size = new System.Drawing.Size(39, 23);
+            this.LastPageButton.TabIndex = 11;
+            this.LastPageButton.TabStop = false;
+            this.LastPageButton.Text = "末页";
+            this.toolTip1.SetToolTip(this.LastPageButton, "跳转到最后一页");
+            this.LastPageButton.UseVisualStyleBackColor = true;
+            this.LastPageButton.Click += new System.EventHandler(this.LastPageButton_Click);
             // 
             // dataGridView1
             // 
@@ -526,7 +481,7 @@
             this.dataGridView1.EditMode = System.Windows.Forms.DataGridViewEditMode.EditProgrammatically;
             this.dataGridView1.EnableHeadersVisualStyles = false;
             this.dataGridView1.GridColor = System.Drawing.Color.FromArgb(((int)(((byte)(61)))), ((int)(((byte)(61)))), ((int)(((byte)(61)))));
-            this.dataGridView1.Location = new System.Drawing.Point(0, 0);
+            this.dataGridView1.Location = new System.Drawing.Point(0, 25);
             this.dataGridView1.Margin = new System.Windows.Forms.Padding(0);
             this.dataGridView1.MultiSelect = false;
             this.dataGridView1.Name = "dataGridView1";
@@ -553,7 +508,7 @@
             this.dataGridView1.ShowCellToolTips = false;
             this.dataGridView1.ShowEditingIcon = false;
             this.dataGridView1.ShowRowErrors = false;
-            this.dataGridView1.Size = new System.Drawing.Size(1184, 228);
+            this.dataGridView1.Size = new System.Drawing.Size(200, 200);
             this.dataGridView1.StandardTab = true;
             this.dataGridView1.TabIndex = 0;
             this.dataGridView1.TabStop = false;
@@ -1069,12 +1024,101 @@
             this.标题.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.NotSortable;
             this.标题.Width = 43;
             // 
+            // tableLayoutPanel1
+            // 
+            this.tableLayoutPanel1.ColumnCount = 3;
+            this.tableLayoutPanel1.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 22F));
+            this.tableLayoutPanel1.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 53F));
+            this.tableLayoutPanel1.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 25F));
+            this.tableLayoutPanel1.Controls.Add(this.leftPanel, 0, 0);
+            this.tableLayoutPanel1.Controls.Add(this.middlePanel, 1, 0);
+            this.tableLayoutPanel1.Controls.Add(this.rightSplitContainer, 2, 0);
+            this.tableLayoutPanel1.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.tableLayoutPanel1.Location = new System.Drawing.Point(0, 0);
+            this.tableLayoutPanel1.Name = "tableLayoutPanel1";
+            this.tableLayoutPanel1.RowCount = 1;
+            this.tableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
+            this.tableLayoutPanel1.Size = new System.Drawing.Size(984, 450);
+            this.tableLayoutPanel1.TabIndex = 0;
+            // 
+            // leftPanel
+            // 
+            this.leftPanel.BackColor = System.Drawing.SystemColors.AppWorkspace;
+            this.leftPanel.Controls.Add(this.articleListLabel);
+            this.leftPanel.Controls.Add(this.articleListBox);
+            this.leftPanel.Controls.Add(this.MonthCalendar);
+            this.leftPanel.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.leftPanel.Location = new System.Drawing.Point(3, 3);
+            this.leftPanel.Name = "leftPanel";
+            this.leftPanel.Size = new System.Drawing.Size(200, 444);
+            this.leftPanel.TabIndex = 0;
+            // 
+            // middlePanel
+            // 
+            this.middlePanel.Controls.Add(this.dataGridView1);
+            this.middlePanel.Controls.Add(this.filterInfoPanel);
+            this.middlePanel.Controls.Add(this.paginationPanel);
+            this.middlePanel.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.middlePanel.Location = new System.Drawing.Point(200, 3);
+            this.middlePanel.Margin = new System.Windows.Forms.Padding(0, 3, 0, 3);
+            this.middlePanel.Name = "middlePanel";
+            this.middlePanel.Size = new System.Drawing.Size(500, 444);
+            this.middlePanel.TabIndex = 1;
+            // 
+            // filterInfoPanel
+            // 
+            this.filterInfoPanel.BackColor = System.Drawing.SystemColors.Control;
+            this.filterInfoPanel.Controls.Add(this.ResultLabel);
+            this.filterInfoPanel.Controls.Add(this.CountLabel);
+            this.filterInfoPanel.Controls.Add(this.label1);
+            this.filterInfoPanel.Dock = System.Windows.Forms.DockStyle.Top;
+            this.filterInfoPanel.Location = new System.Drawing.Point(0, 0);
+            this.filterInfoPanel.Name = "filterInfoPanel";
+            this.filterInfoPanel.Size = new System.Drawing.Size(500, 25);
+            this.filterInfoPanel.TabIndex = 1;
+            // 
+            // paginationPanel
+            // 
+            this.paginationPanel.BackColor = System.Drawing.SystemColors.Control;
+            this.paginationPanel.Controls.Add(this.FirstPageButton);
+            this.paginationPanel.Controls.Add(this.PrePageButton);
+            this.paginationPanel.Controls.Add(this.PageNumTextBox);
+            this.paginationPanel.Controls.Add(this.TotalPageNumLabel);
+            this.paginationPanel.Controls.Add(this.JumpPageButton);
+            this.paginationPanel.Controls.Add(this.NextPageButton);
+            this.paginationPanel.Controls.Add(this.LastPageButton);
+            this.paginationPanel.Dock = System.Windows.Forms.DockStyle.Bottom;
+            this.paginationPanel.Location = new System.Drawing.Point(0, 414);
+            this.paginationPanel.Name = "paginationPanel";
+            this.paginationPanel.Size = new System.Drawing.Size(500, 30);
+            this.paginationPanel.TabIndex = 2;
+            // 
+            // rightSplitContainer
+            // 
+            this.rightSplitContainer.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.rightSplitContainer.Location = new System.Drawing.Point(700, 3);
+            this.rightSplitContainer.Margin = new System.Windows.Forms.Padding(0, 3, 3, 3);
+            this.rightSplitContainer.Name = "rightSplitContainer";
+            this.rightSplitContainer.Orientation = System.Windows.Forms.Orientation.Horizontal;
+            // 
+            // rightSplitContainer.Panel1
+            // 
+            this.rightSplitContainer.Panel1.Controls.Add(this.PreviewGroupBox);
+            // 
+            // rightSplitContainer.Panel2
+            // 
+            this.rightSplitContainer.Panel2.Controls.Add(this.SpeedChart);
+            this.rightSplitContainer.Panel2.Controls.Add(this.TrendChartCheckBox);
+            this.rightSplitContainer.Size = new System.Drawing.Size(281, 444);
+            this.rightSplitContainer.SplitterDistance = 177;
+            this.rightSplitContainer.TabIndex = 3;
+            // 
             // History
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(984, 450);
-            this.Controls.Add(this.splitContainer1);
+            this.Controls.Add(this.tableLayoutPanel1);
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.Name = "History";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
@@ -1082,16 +1126,23 @@
             this.Load += new System.EventHandler(this.History_Load);
             this.MonthCalendarContextMenuStrip.ResumeLayout(false);
             this.PreviewGroupBox.ResumeLayout(false);
-            this.splitContainer1.Panel1.ResumeLayout(false);
-            this.splitContainer1.Panel2.ResumeLayout(false);
-            ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).EndInit();
-            this.splitContainer1.ResumeLayout(false);
-            this.ToolPanel.ResumeLayout(false);
-            this.ToolPanel.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.SpeedChart)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.dataGridView1)).EndInit();
             this.HistoryContextMenuStrip.ResumeLayout(false);
             this.HistoryContextMenuStrip.PerformLayout();
+            this.tableLayoutPanel1.ResumeLayout(false);
+            this.leftPanel.ResumeLayout(false);
+            this.leftPanel.PerformLayout();
+            this.middlePanel.ResumeLayout(false);
+            this.filterInfoPanel.ResumeLayout(false);
+            this.filterInfoPanel.PerformLayout();
+            this.paginationPanel.ResumeLayout(false);
+            this.paginationPanel.PerformLayout();
+            this.rightSplitContainer.Panel1.ResumeLayout(false);
+            this.rightSplitContainer.Panel2.ResumeLayout(false);
+            this.rightSplitContainer.Panel2.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.rightSplitContainer)).EndInit();
+            this.rightSplitContainer.ResumeLayout(false);
             this.ResumeLayout(false);
 
         }
@@ -1100,7 +1151,6 @@
         private HistoryMonthCalendar MonthCalendar;
         private System.Windows.Forms.GroupBox PreviewGroupBox;
         private System.Windows.Forms.RichTextBox PreviewRichTextBox;
-        private System.Windows.Forms.SplitContainer splitContainer1;
         private System.Windows.Forms.DataGridView dataGridView1;
         private System.Windows.Forms.DataVisualization.Charting.Chart SpeedChart;
         private System.Windows.Forms.ContextMenuStrip HistoryContextMenuStrip;
@@ -1111,10 +1161,7 @@
         private System.Windows.Forms.ToolStripMenuItem CopyScoreToolStripMenuItem;
         private System.Windows.Forms.ToolStripSeparator toolStripSeparator2;
         private System.Windows.Forms.ToolStripMenuItem RetypeToolStripMenuItem;
-        private System.Windows.Forms.Panel ToolPanel;
         private System.Windows.Forms.Label ResultLabel;
-        private System.Windows.Forms.Button SearchButton;
-        private System.Windows.Forms.TextBox SearchTextBox;
         private System.Windows.Forms.CheckBox TrendChartCheckBox;
         private System.Windows.Forms.ToolTip toolTip1;
         private System.Windows.Forms.ToolStripMenuItem SearchTitleToolStripMenuItem;
@@ -1169,5 +1216,13 @@
         private System.Windows.Forms.DataGridViewTextBoxColumn 用时;
         private System.Windows.Forms.DataGridViewTextBoxColumn 类别;
         private System.Windows.Forms.DataGridViewTextBoxColumn 标题;
+        private System.Windows.Forms.TableLayoutPanel tableLayoutPanel1;
+        private System.Windows.Forms.Panel leftPanel;
+        private System.Windows.Forms.Panel middlePanel;
+        private System.Windows.Forms.SplitContainer rightSplitContainer;
+        private System.Windows.Forms.Panel filterInfoPanel;
+        private System.Windows.Forms.Panel paginationPanel;
+        private System.Windows.Forms.Label articleListLabel;
+        private System.Windows.Forms.ListBox articleListBox;
     }
 }

@@ -466,6 +466,53 @@ namespace WindowsFormsApplication2.Storage
             reader.Close();
             return dates.ToArray();
         }
+
+        public List<string> GetDistinctArticleTitles()
+        {
+            List<string> titles = new List<string>();
+            this.cmd.CommandText = "SELECT DISTINCT article_title FROM score ORDER BY article_title";
+            SQLiteDataReader reader = this.cmd.ExecuteReader();
+            while (reader.Read())
+            {
+                titles.Add(reader.GetString(0));
+            }
+            reader.Close();
+            return titles;
+        }
+
+        private string BuildFilterCondition(DateTime startDate, DateTime endDate, string title, long? segmentId)
+        {
+            string where = this.BuildScoreTimeRangeCondition(startDate, endDate);
+            if (!string.IsNullOrEmpty(title))
+            {
+                where += $" AND article_title='{this.ConvertText(title)}'";
+            }
+            if (segmentId.HasValue)
+            {
+                where += $" AND segment_id={segmentId.Value}";
+            }
+            return where;
+        }
+
+        public int GetScoreCountFiltered(DateTime startDate, DateTime endDate, string title, long? segmentId)
+        {
+            this.cmd.CommandText = $"SELECT COUNT(1) FROM score WHERE {this.BuildFilterCondition(startDate, endDate, title, segmentId)}";
+            object readNum = this.cmd.ExecuteScalar();
+            if (readNum == null)
+            {
+                return 0;
+            }
+            return Convert.ToInt32(readNum);
+        }
+
+        public StorageDataSet.ScoreDataTable GetScoresFiltered(DateTime startDate, DateTime endDate, string title, long? segmentId, int start, int limit)
+        {
+            this.cmd.CommandText = $"SELECT * FROM score WHERE {this.BuildFilterCondition(startDate, endDate, title, segmentId)} LIMIT {limit} OFFSET {start}";
+            SQLiteDataAdapter adapter = new SQLiteDataAdapter(this.cmd);
+            StorageDataSet.ScoreDataTable myScore = new StorageDataSet.ScoreDataTable();
+            adapter.Fill(myScore);
+            return myScore;
+        }
     }
 
     public class ArticleData : Database
