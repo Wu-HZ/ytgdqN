@@ -414,29 +414,6 @@ namespace WindowsFormsApplication2.History
             this.PreviewRichTextBox.Text = Glob.ScoreHistory.GetContentFromSegmentId(segmentId);
         }
 
-        private void ConfigureTrendChartStyle(string labelFormat, bool showMarkers)
-        {
-            Series series = this.SpeedChart.Series[0];
-            Axis axisX = this.SpeedChart.ChartAreas[0].AxisX;
-            Axis axisY = this.SpeedChart.ChartAreas[0].AxisY;
-
-            series.ChartType = SeriesChartType.FastLine;
-            series.XValueType = ChartValueType.DateTime;
-            series.MarkerStyle = showMarkers ? MarkerStyle.Circle : MarkerStyle.None;
-            series.MarkerSize = showMarkers ? 4 : 0;
-            axisX.Minimum = double.NaN;
-            axisX.Maximum = double.NaN;
-            axisX.Interval = 0;
-            axisX.IntervalType = DateTimeIntervalType.Auto;
-            axisX.LabelStyle.Format = labelFormat;
-            axisX.LabelStyle.Angle = showMarkers ? -45 : 0;
-            axisX.LabelStyle.Interval = 0;
-            axisX.LabelStyle.IntervalType = DateTimeIntervalType.Auto;
-            axisX.IsMarginVisible = true;
-            axisY.Minimum = double.NaN;
-            axisY.Maximum = double.NaN;
-        }
-
         private void ConfigureSingleChartStyle()
         {
             Series series = this.SpeedChart.Series[0];
@@ -458,21 +435,6 @@ namespace WindowsFormsApplication2.History
             axisY.Maximum = double.NaN;
         }
 
-        private string GetTrendAxisFormat(DateTime startTime, DateTime endTime)
-        {
-            if (startTime.Date == endTime.Date)
-            {
-                return "HH:mm";
-            }
-
-            if (startTime.Year == endTime.Year)
-            {
-                return "MM-dd";
-            }
-
-            return "yy-MM";
-        }
-
         private void ShowTrendChart()
         {
             this.SpeedChart.Series[0].Points.Clear();
@@ -488,30 +450,48 @@ namespace WindowsFormsApplication2.History
                 .Cast<StorageDataSet.ScoreRow>()
                 .OrderBy(row => Convert.ToDateTime(row["score_time"]))
                 .ToList();
-            string labelFormat = this.GetTrendAxisFormat(
-                Convert.ToDateTime(orderedRows[0]["score_time"]),
-                Convert.ToDateTime(orderedRows[orderedRows.Count - 1]["score_time"]));
-            bool showMarkers = orderedRows.Count <= 30;
-            this.ConfigureTrendChartStyle(labelFormat, showMarkers);
+
+            Series series = this.SpeedChart.Series[0];
+            Axis axisX = this.SpeedChart.ChartAreas[0].AxisX;
+            Axis axisY = this.SpeedChart.ChartAreas[0].AxisY;
+
+            series.ChartType = SeriesChartType.FastLine;
+            series.XValueType = ChartValueType.Auto;
+            series.MarkerStyle = MarkerStyle.Circle;
+            series.MarkerSize = 3;
+            axisX.Minimum = double.NaN;
+            axisX.Maximum = double.NaN;
+            axisX.Interval = 1;
+            axisX.LabelStyle.Format = "";
+            axisX.LabelStyle.Angle = -45;
+            axisX.IsMarginVisible = true;
+            axisY.Minimum = double.NaN;
+            axisY.Maximum = double.NaN;
 
             double minSpeed = double.MaxValue;
+            int index = 0;
+            string lastDate = "";
             foreach (StorageDataSet.ScoreRow row in orderedRows)
             {
                 DateTime scoreTime = Convert.ToDateTime(row["score_time"]);
+                string dateLabel = scoreTime.ToString("MM-dd");
                 double speedVal = this.GetDisplaySpeed(row);
                 DataPoint point = new DataPoint();
-                point.SetValueXY(scoreTime, speedVal);
+                point.SetValueXY(index, speedVal);
+                point.AxisLabel = dateLabel == lastDate ? "" : dateLabel;
                 point.ToolTip = scoreTime.ToString("yyyy-MM-dd HH:mm:ss") + " 速度 " + speedVal.ToString("0.00");
                 this.SpeedChart.Series[0].Points.Add(point);
+                lastDate = dateLabel;
                 if (speedVal < minSpeed)
                 {
                     minSpeed = speedVal;
                 }
+                index++;
             }
 
             if (minSpeed < double.MaxValue)
             {
-                this.SpeedChart.ChartAreas[0].AxisY.Minimum = Math.Max(0, Math.Floor(minSpeed / 10.0) * 10.0);
+                axisY.Minimum = Math.Max(0, Math.Floor(minSpeed / 10.0) * 10.0);
             }
         }
 
