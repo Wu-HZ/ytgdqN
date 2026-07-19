@@ -131,7 +131,8 @@
             this.用时 = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.类别 = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.标题 = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.tableLayoutPanel1 = new System.Windows.Forms.TableLayoutPanel();
+            this.outerSplitContainer = new System.Windows.Forms.SplitContainer();
+            this.innerSplitContainer = new System.Windows.Forms.SplitContainer();
             this.leftPanel = new System.Windows.Forms.Panel();
             this.middlePanel = new System.Windows.Forms.Panel();
             this.filterInfoPanel = new System.Windows.Forms.Panel();
@@ -142,7 +143,14 @@
             ((System.ComponentModel.ISupportInitialize)(this.SpeedChart)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.dataGridView1)).BeginInit();
             this.HistoryContextMenuStrip.SuspendLayout();
-            this.tableLayoutPanel1.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.outerSplitContainer)).BeginInit();
+            this.outerSplitContainer.Panel1.SuspendLayout();
+            this.outerSplitContainer.Panel2.SuspendLayout();
+            this.outerSplitContainer.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.innerSplitContainer)).BeginInit();
+            this.innerSplitContainer.Panel1.SuspendLayout();
+            this.innerSplitContainer.Panel2.SuspendLayout();
+            this.innerSplitContainer.SuspendLayout();
             this.leftPanel.SuspendLayout();
             this.middlePanel.SuspendLayout();
             this.filterInfoPanel.SuspendLayout();
@@ -366,7 +374,7 @@
             // 
             this.PageNumTextBox.Location = new System.Drawing.Point(107, 4);
             this.PageNumTextBox.Name = "PageNumTextBox";
-            this.PageNumTextBox.Size = new System.Drawing.Size(35, 21);
+            this.PageNumTextBox.Size = new System.Drawing.Size(35, 23);
             this.PageNumTextBox.TabIndex = 5;
             this.PageNumTextBox.TabStop = false;
             this.PageNumTextBox.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
@@ -378,7 +386,7 @@
             this.TotalPageNumLabel.Location = new System.Drawing.Point(148, 6);
             this.TotalPageNumLabel.Margin = new System.Windows.Forms.Padding(0);
             this.TotalPageNumLabel.Name = "TotalPageNumLabel";
-            this.TotalPageNumLabel.Size = new System.Drawing.Size(56, 18);
+            this.TotalPageNumLabel.Size = new System.Drawing.Size(56, 23);
             this.TotalPageNumLabel.TabIndex = 6;
             this.TotalPageNumLabel.Text = "label2";
             this.toolTip1.SetToolTip(this.TotalPageNumLabel, "总页数");
@@ -503,7 +511,7 @@
             dataGridViewCellStyle29.SelectionForeColor = System.Drawing.Color.White;
             this.dataGridView1.RowsDefaultCellStyle = dataGridViewCellStyle29;
             this.dataGridView1.RowTemplate.Height = 18;
-            this.dataGridView1.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
+            this.dataGridView1.ScrollBars = System.Windows.Forms.ScrollBars.Both;
             this.dataGridView1.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
             this.dataGridView1.ShowCellToolTips = false;
             this.dataGridView1.ShowEditingIcon = false;
@@ -1024,33 +1032,51 @@
             this.标题.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.NotSortable;
             this.标题.Width = 43;
             // 
-            // tableLayoutPanel1
+            // outerSplitContainer
             // 
-            this.tableLayoutPanel1.ColumnCount = 3;
-            this.tableLayoutPanel1.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 22F));
-            this.tableLayoutPanel1.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 53F));
-            this.tableLayoutPanel1.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 25F));
-            this.tableLayoutPanel1.Controls.Add(this.leftPanel, 0, 0);
-            this.tableLayoutPanel1.Controls.Add(this.middlePanel, 1, 0);
-            this.tableLayoutPanel1.Controls.Add(this.rightSplitContainer, 2, 0);
-            this.tableLayoutPanel1.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.tableLayoutPanel1.Location = new System.Drawing.Point(0, 0);
-            this.tableLayoutPanel1.Name = "tableLayoutPanel1";
-            this.tableLayoutPanel1.RowCount = 1;
-            this.tableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            this.tableLayoutPanel1.Size = new System.Drawing.Size(984, 450);
-            this.tableLayoutPanel1.TabIndex = 0;
+            this.outerSplitContainer.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.outerSplitContainer.Location = new System.Drawing.Point(0, 0);
+            this.outerSplitContainer.Name = "outerSplitContainer";
+            // 
+            // outerSplitContainer.Panel1
+            // 
+            this.outerSplitContainer.Panel1.Controls.Add(this.leftPanel);
+            this.outerSplitContainer.Panel1MinSize = 140;
+            // 
+            // outerSplitContainer.Panel2
+            // 
+            this.outerSplitContainer.Panel2.Controls.Add(this.innerSplitContainer);
+            this.outerSplitContainer.Size = new System.Drawing.Size(984, 450);
+            this.outerSplitContainer.SplitterDistance = 167;
+            this.outerSplitContainer.TabIndex = 0;
+            // 
+            // innerSplitContainer
+            // 
+            this.innerSplitContainer.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.innerSplitContainer.Location = new System.Drawing.Point(0, 0);
+            this.innerSplitContainer.Name = "innerSplitContainer";
+            this.innerSplitContainer.Orientation = System.Windows.Forms.Orientation.Vertical;
+            // 
+            // innerSplitContainer.Panel1
+            // 
+            this.innerSplitContainer.Panel1.Controls.Add(this.middlePanel);
+            // 
+            // innerSplitContainer.Panel2
+            // 
+            this.innerSplitContainer.Panel2.Controls.Add(this.rightSplitContainer);
+            this.innerSplitContainer.Size = new System.Drawing.Size(813, 450);
+            this.innerSplitContainer.SplitterDistance = 620;
+            this.innerSplitContainer.TabIndex = 0;
             // 
             // leftPanel
             // 
-            this.leftPanel.BackColor = System.Drawing.SystemColors.AppWorkspace;
             this.leftPanel.Controls.Add(this.articleListLabel);
             this.leftPanel.Controls.Add(this.articleListBox);
             this.leftPanel.Controls.Add(this.MonthCalendar);
             this.leftPanel.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.leftPanel.Location = new System.Drawing.Point(3, 3);
+            this.leftPanel.Location = new System.Drawing.Point(0, 0);
             this.leftPanel.Name = "leftPanel";
-            this.leftPanel.Size = new System.Drawing.Size(200, 444);
+            this.leftPanel.Size = new System.Drawing.Size(163, 450);
             this.leftPanel.TabIndex = 0;
             // 
             // middlePanel
@@ -1059,10 +1085,9 @@
             this.middlePanel.Controls.Add(this.filterInfoPanel);
             this.middlePanel.Controls.Add(this.paginationPanel);
             this.middlePanel.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.middlePanel.Location = new System.Drawing.Point(200, 3);
-            this.middlePanel.Margin = new System.Windows.Forms.Padding(0, 3, 0, 3);
+            this.middlePanel.Location = new System.Drawing.Point(0, 0);
             this.middlePanel.Name = "middlePanel";
-            this.middlePanel.Size = new System.Drawing.Size(500, 444);
+            this.middlePanel.Size = new System.Drawing.Size(612, 450);
             this.middlePanel.TabIndex = 1;
             // 
             // filterInfoPanel
@@ -1096,8 +1121,7 @@
             // rightSplitContainer
             // 
             this.rightSplitContainer.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.rightSplitContainer.Location = new System.Drawing.Point(700, 3);
-            this.rightSplitContainer.Margin = new System.Windows.Forms.Padding(0, 3, 3, 3);
+            this.rightSplitContainer.Location = new System.Drawing.Point(0, 0);
             this.rightSplitContainer.Name = "rightSplitContainer";
             this.rightSplitContainer.Orientation = System.Windows.Forms.Orientation.Horizontal;
             // 
@@ -1109,8 +1133,8 @@
             // 
             this.rightSplitContainer.Panel2.Controls.Add(this.SpeedChart);
             this.rightSplitContainer.Panel2.Controls.Add(this.TrendChartCheckBox);
-            this.rightSplitContainer.Size = new System.Drawing.Size(281, 444);
-            this.rightSplitContainer.SplitterDistance = 177;
+            this.rightSplitContainer.Size = new System.Drawing.Size(189, 450);
+            this.rightSplitContainer.SplitterDistance = 180;
             this.rightSplitContainer.TabIndex = 3;
             // 
             // History
@@ -1118,7 +1142,7 @@
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(984, 450);
-            this.Controls.Add(this.tableLayoutPanel1);
+            this.Controls.Add(this.outerSplitContainer);
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.Name = "History";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
@@ -1130,7 +1154,6 @@
             ((System.ComponentModel.ISupportInitialize)(this.dataGridView1)).EndInit();
             this.HistoryContextMenuStrip.ResumeLayout(false);
             this.HistoryContextMenuStrip.PerformLayout();
-            this.tableLayoutPanel1.ResumeLayout(false);
             this.leftPanel.ResumeLayout(false);
             this.leftPanel.PerformLayout();
             this.middlePanel.ResumeLayout(false);
@@ -1143,6 +1166,14 @@
             this.rightSplitContainer.Panel2.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.rightSplitContainer)).EndInit();
             this.rightSplitContainer.ResumeLayout(false);
+            this.innerSplitContainer.Panel1.ResumeLayout(false);
+            this.innerSplitContainer.Panel2.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)(this.innerSplitContainer)).EndInit();
+            this.innerSplitContainer.ResumeLayout(false);
+            this.outerSplitContainer.Panel1.ResumeLayout(false);
+            this.outerSplitContainer.Panel2.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)(this.outerSplitContainer)).EndInit();
+            this.outerSplitContainer.ResumeLayout(false);
             this.ResumeLayout(false);
 
         }
@@ -1216,7 +1247,8 @@
         private System.Windows.Forms.DataGridViewTextBoxColumn 用时;
         private System.Windows.Forms.DataGridViewTextBoxColumn 类别;
         private System.Windows.Forms.DataGridViewTextBoxColumn 标题;
-        private System.Windows.Forms.TableLayoutPanel tableLayoutPanel1;
+        private System.Windows.Forms.SplitContainer outerSplitContainer;
+        private System.Windows.Forms.SplitContainer innerSplitContainer;
         private System.Windows.Forms.Panel leftPanel;
         private System.Windows.Forms.Panel middlePanel;
         private System.Windows.Forms.SplitContainer rightSplitContainer;

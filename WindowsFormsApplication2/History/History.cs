@@ -75,6 +75,7 @@ namespace WindowsFormsApplication2.History
             InitializeComponent();
             this.MonthCalendar.HigherViewRangeSelected += MonthCalendar_HigherViewRangeSelected;
             this.WindowState = FormWindowState.Maximized;
+            this.paginationPanel.Resize += (sender, e) => UpdatePaginationLayout();
         }
 
         private void History_Load(object sender, EventArgs e)
@@ -88,10 +89,19 @@ namespace WindowsFormsApplication2.History
             this.RefreshData();
             this.BeginInvoke((MethodInvoker)(() =>
             {
+                if (this.outerSplitContainer.Width > 100)
+                {
+                    this.outerSplitContainer.SplitterDistance = (int)(this.outerSplitContainer.Width * 0.17);
+                }
+                if (this.innerSplitContainer.Width > 100)
+                {
+                    this.innerSplitContainer.SplitterDistance = (int)(this.innerSplitContainer.Width * 0.76);
+                }
                 if (this.rightSplitContainer.Height > 100)
                 {
                     this.rightSplitContainer.SplitterDistance = (int)(this.rightSplitContainer.Height * 0.4);
                 }
+                this.UpdatePaginationLayout();
             }));
         }
 
@@ -116,6 +126,29 @@ namespace WindowsFormsApplication2.History
                 this.articleListBox.SelectedIndex = 0;
             }
             this.suppressArticleListEvent = false;
+        }
+
+        private void UpdatePaginationLayout()
+        {
+            const int buttonHeight = 23;
+            const int spacing = 4;
+            Control[] controls = { this.FirstPageButton, this.PrePageButton, this.PageNumTextBox, this.TotalPageNumLabel, this.JumpPageButton, this.NextPageButton, this.LastPageButton };
+
+            int totalWidth = spacing * (controls.Length - 1);
+            foreach (Control c in controls)
+            {
+                totalWidth += c.Width;
+            }
+
+            int startX = (this.paginationPanel.ClientSize.Width - totalWidth) / 2;
+            int centerY = (this.paginationPanel.ClientSize.Height - buttonHeight) / 2;
+            int x = startX;
+
+            foreach (Control c in controls)
+            {
+                c.Location = new Point(x, centerY);
+                x += c.Width + spacing;
+            }
         }
 
         private void ArticleListBox_SelectedIndexChanged(object sender, EventArgs e)
