@@ -408,28 +408,41 @@ namespace WindowsFormsApplication2.History
         private void SetupSessionColumns()
         {
             this.dataGridView1.Columns.Clear();
-            this.dataGridView1.Columns.Add("序", "序");
-            this.dataGridView1.Columns.Add("日期", "日期");
-            this.dataGridView1.Columns.Add("时间", "时间");
-            this.dataGridView1.Columns.Add("标题", "标题");
-            this.dataGridView1.Columns.Add("段数", "段数");
-            this.dataGridView1.Columns.Add("字数", "字数");
-            this.dataGridView1.Columns.Add("均速", "均速");
+            var cols = new (string Name, string Header, int Width)[] {
+                ("序", "序", 28),
+                ("日期", "日期", 70),
+                ("时间", "时间", 50),
+                ("标题", "标题", 80),
+                ("段数", "段数", 40),
+                ("速度", "速度", 50),
+                ("击键", "击键", 50),
+                ("码长", "码长", 45),
+                ("难度", "难度", 45),
+                ("评级", "评级", 45),
+                ("回改率", "回改率", 52),
+                ("键准", "键准", 45),
+                ("效率", "效率", 45),
+                ("键数", "键数", 45),
+                ("字数", "字数", 45),
+                ("打词率", "打词率", 52),
+                ("用时", "用时", 50),
+                ("类别", "类别", 40),
+            };
+            foreach (var c in cols)
+            {
+                var col = this.dataGridView1.Columns.Add(c.Name, c.Header);
+                this.dataGridView1.Columns[col].Width = c.Width;
+            }
             foreach (DataGridViewColumn col in this.dataGridView1.Columns)
             {
                 col.SortMode = DataGridViewColumnSortMode.NotSortable;
                 col.ReadOnly = true;
-                col.Width = 50;
                 col.DefaultCellStyle.BackColor = Color.DimGray;
                 col.DefaultCellStyle.ForeColor = Color.FromArgb(224, 224, 224);
                 col.DefaultCellStyle.SelectionBackColor = Color.DimGray;
                 col.DefaultCellStyle.SelectionForeColor = Color.Bisque;
                 col.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
             }
-            this.dataGridView1.Columns["序"].Width = 28;
-            this.dataGridView1.Columns["标题"].Width = 120;
-            this.dataGridView1.Columns["日期"].Width = 70;
-            this.dataGridView1.Columns["时间"].Width = 50;
             this.dataGridView1.Columns["日期"].DefaultCellStyle.BackColor = Color.Gray;
             this.dataGridView1.Columns["日期"].DefaultCellStyle.ForeColor = Color.FromArgb(255, 224, 192);
             this.dataGridView1.Columns["时间"].DefaultCellStyle.BackColor = Color.Gray;
@@ -478,13 +491,62 @@ namespace WindowsFormsApplication2.History
             this.dataGridView1.Columns["段号"].DefaultCellStyle.SelectionForeColor = Color.Bisque;
         }
 
+        private class SessionAggr
+        {
+            public string SessionId;
+            public string FirstTime;
+            public string Title;
+            public int SegCount;
+            public int TotalChars;
+            public double TotalSpeed;
+            public double TotalKeystroke;
+            public double TotalCodeLen;
+            public double TotalDifficulty;
+            public double TotalRating;
+            public double TotalBackRate;
+            public double TotalAccuracy;
+            public double TotalEfficiency;
+            public int TotalKeys;
+            public double TotalWordsRate;
+            public double TotalSeconds;
+            public string Category;
+        }
+
+        private double ParseCostTimeSeconds(string costTime)
+        {
+            if (string.IsNullOrEmpty(costTime))
+                return 0;
+            try
+            {
+                var parts = costTime.Split(':');
+                if (parts.Length == 2)
+                {
+                    return int.Parse(parts[0]) * 60 + double.Parse(parts[1]);
+                }
+                if (parts.Length == 3)
+                {
+                    return int.Parse(parts[0]) * 3600 + int.Parse(parts[1]) * 60 + double.Parse(parts[2]);
+                }
+            }
+            catch { }
+            return 0;
+        }
+
+        private string FormatSeconds(double seconds)
+        {
+            var ts = TimeSpan.FromSeconds(seconds);
+            if (ts.TotalHours >= 1)
+                return ts.ToString(@"h\:mm\:ss");
+            return ts.ToString(@"m\:ss");
+        }
+
         private void ShowSessionList()
         {
             this.isSessionView = true;
             this.backButton.Visible = false;
             this.SetupSessionColumns();
 
-            var sessions = new Dictionary<string, (string firstTime, string title, int segCount, int totalChars, double totalSpeed, string category, int keys)>();
+            var sessions = new Dictionary<string, SessionAggr>();
             foreach (var dataRow in this.currentScoreData)
             {
                 string sessId = dataRow["session_id"] == DBNull.Value ? "" : dataRow["session_id"].ToString();
@@ -493,43 +555,67 @@ namespace WindowsFormsApplication2.History
                     continue;
                 }
 
+                string[] curSpeed = dataRow["speed"].ToString().Split('/');
+                double speedVal = double.Parse(curSpeed[0]);
+                Glob.CategoryValue categoryVal = (Glob.CategoryValue)dataRow["category"];
+                bool isEn = CategoryHandler.IsEn(categoryVal);
+                if (isEn)
+                {
+                    speedVal *= 5;
+                }
+
+                double keystroke = (double)dataRow["keystroke"];
+                double codeLen = (double)dataRow["code_len"];
+                double difficulty = (double)dataRow["difficulty"];
+                double backRate = (double)dataRow["back_rate"];
+                double accuracy = (double)dataRow["accuracy_rate"];
+                int effciency = (int)dataRow["effciency"];
+                int keys = (int)dataRow["keys"];
+                int count = (int)dataRow["count"];
+                double wordsRate = (double)dataRow["words_rate"];
+                double secs = ParseCostTimeSeconds(dataRow["cost_time"].ToString());
+                string cateText = CategoryHandler.GetCategoryText(categoryVal);
+
                 if (!sessions.ContainsKey(sessId))
                 {
-                    string[] curSpeed = dataRow["speed"].ToString().Split('/');
-                    double speedVal = double.Parse(curSpeed[0]);
-                    Glob.CategoryValue categoryVal = (Glob.CategoryValue)dataRow["category"];
-                    bool isEn = CategoryHandler.IsEn(categoryVal);
-                    if (isEn)
-                    {
-                        speedVal *= 5;
-                    }
-
                     DateTime scoreTime = Convert.ToDateTime(dataRow["score_time"]);
-                    sessions[sessId] = (
-                        firstTime: scoreTime.ToString("yyyy-MM-dd HH:mm:ss"),
-                        title: dataRow["article_title"].ToString(),
-                        segCount: 1,
-                        totalChars: (int)dataRow["count"],
-                        totalSpeed: speedVal,
-                        category: CategoryHandler.GetCategoryText(categoryVal),
-                        keys: (int)dataRow["keys"]
-                    );
+                    sessions[sessId] = new SessionAggr
+                    {
+                        SessionId = sessId,
+                        FirstTime = scoreTime.ToString("yyyy-MM-dd HH:mm:ss"),
+                        Title = dataRow["article_title"].ToString(),
+                        SegCount = 1,
+                        TotalChars = count,
+                        TotalSpeed = speedVal,
+                        TotalKeystroke = keystroke,
+                        TotalCodeLen = codeLen,
+                        TotalDifficulty = difficulty,
+                        TotalRating = difficulty * speedVal,
+                        TotalBackRate = backRate,
+                        TotalAccuracy = accuracy,
+                        TotalEfficiency = effciency,
+                        TotalKeys = keys,
+                        TotalWordsRate = wordsRate,
+                        TotalSeconds = secs,
+                        Category = cateText,
+                    };
                 }
                 else
                 {
                     var entry = sessions[sessId];
-                    string[] curSpeed = dataRow["speed"].ToString().Split('/');
-                    double speedVal = double.Parse(curSpeed[0]);
-                    Glob.CategoryValue categoryVal = (Glob.CategoryValue)dataRow["category"];
-                    if (CategoryHandler.IsEn(categoryVal))
-                    {
-                        speedVal *= 5;
-                    }
-                    entry.segCount++;
-                    entry.totalChars += (int)dataRow["count"];
-                    entry.totalSpeed += speedVal;
-                    entry.keys += (int)dataRow["keys"];
-                    sessions[sessId] = entry;
+                    entry.SegCount++;
+                    entry.TotalChars += count;
+                    entry.TotalSpeed += speedVal;
+                    entry.TotalKeystroke += keystroke;
+                    entry.TotalCodeLen += codeLen;
+                    entry.TotalDifficulty += difficulty;
+                    entry.TotalRating += difficulty * speedVal;
+                    entry.TotalBackRate += backRate;
+                    entry.TotalAccuracy += accuracy;
+                    entry.TotalEfficiency += effciency;
+                    entry.TotalKeys += keys;
+                    entry.TotalWordsRate += wordsRate;
+                    entry.TotalSeconds += secs;
                 }
             }
 
@@ -537,19 +623,30 @@ namespace WindowsFormsApplication2.History
             foreach (var kvp in sessions)
             {
                 index++;
-                var entry = kvp.Value;
-                double avgSpeed = entry.segCount > 0 ? entry.totalSpeed / entry.segCount : 0;
-                string datePart = entry.firstTime.Substring(0, 10);
-                string timePart = entry.firstTime.Substring(11);
+                var e = kvp.Value;
+                int n = e.SegCount;
+                string datePart = e.FirstTime.Substring(0, 10);
+                string timePart = e.FirstTime.Substring(11);
                 this.dataGridView1.Rows.Add(
                     index.ToString(),
                     datePart,
                     timePart,
-                    entry.title,
-                    entry.segCount.ToString(),
-                    entry.totalChars.ToString(),
-                    avgSpeed.ToString("0.00"));
-                this.dataGridView1.Rows[dataGridView1.RowCount - 1].Cells[1].Tag = kvp.Key; // store session_id in date cell tag
+                    e.Title,
+                    n.ToString(),
+                    (e.TotalSpeed / n).ToString("0.00"),
+                    (e.TotalKeystroke / n).ToString("0.00"),
+                    (e.TotalCodeLen / n).ToString("0.00"),
+                    (e.TotalDifficulty / n).ToString("0.00"),
+                    (e.TotalRating / n).ToString("0.00"),
+                    (e.TotalBackRate / n).ToString("0.00") + "%",
+                    (e.TotalAccuracy / n).ToString("0.00") + "%",
+                    (e.TotalEfficiency / n).ToString("0") + "%",
+                    e.TotalKeys.ToString(),
+                    e.TotalChars.ToString(),
+                    (e.TotalWordsRate / n).ToString("0.00") + "%",
+                    FormatSeconds(e.TotalSeconds),
+                    e.Category);
+                this.dataGridView1.Rows[dataGridView1.RowCount - 1].Cells[1].Tag = kvp.Key;
             }
 
             this.dataGridView1.Enabled = true;
