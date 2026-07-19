@@ -2131,6 +2131,7 @@ namespace WindowsFormsApplication2
                 }
 
                 NewSendText.发文状态 = true;
+                Glob.CurrentSessionId = System.Guid.NewGuid().ToString("N");
                 frm.SetMatch(false);
                 if (NewSendText.是否周期)
                 {
@@ -2145,6 +2146,7 @@ namespace WindowsFormsApplication2
             {
                 NewSendText.ArticleSource = (NewSendText.ArticleSourceValue)tabControl1.SelectedIndex;
                 NewSendText.发文状态 = true;
+                Glob.CurrentSessionId = System.Guid.NewGuid().ToString("N");
                 frm.SetMatch(false);
                 frm.SendNextFun();
             }

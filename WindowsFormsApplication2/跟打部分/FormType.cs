@@ -1122,6 +1122,7 @@ namespace WindowsFormsApplication2
         private void RestoreSendSessionState(SendSessionSnapshot snapshot)
         {
             NewSendText.发文状态 = true;
+            Glob.CurrentSessionId = System.Guid.NewGuid().ToString("N");
             NewSendText.SentId = snapshot.SentId;
             NewSendText.标题 = snapshot.CurrentTitle ?? "";
             NewSendText.文章全文 = snapshot.ArticleFullText ?? "";
@@ -2997,8 +2998,18 @@ namespace WindowsFormsApplication2
                         #region 保存成绩到数据库中
                         //* 保存文段
                         long databaseSegmentId = Glob.ScoreHistory.InsertSegment(Glob.TypeText, this.lblMatchCount.Text);
+                        //* 确保有会话 ID（非发文模式每次生成新的）
+                        if (string.IsNullOrEmpty(Glob.CurrentSessionId))
+                        {
+                            Glob.CurrentSessionId = System.Guid.NewGuid().ToString("N");
+                        }
                         //* 保存成绩
-                        Glob.ScoreHistory.InsertScore(Glob.TextTime.ToString("s"), Glob.CurSegmentNum, Spsend, jj, mc, Glob.词库理论码长, Glob.TextHg, Math.Abs(Glob.TextBg - Glob.TextHg), Glob.回车, Glob.选重, Glob.TextCz, Glob.TextHg_, UserJz, Glob.效率, Glob.TextJs, TextLen, Glob.aTypeWords, Glob.TextDc_, UserTime, databaseSegmentId, this.lblTitle.Text, Glob.Instration, Glob.Difficulty, (int)Glob.Category);
+                        Glob.ScoreHistory.InsertScore(Glob.TextTime.ToString("s"), Glob.CurSegmentNum, Spsend, jj, mc, Glob.词库理论码长, Glob.TextHg, Math.Abs(Glob.TextBg - Glob.TextHg), Glob.回车, Glob.选重, Glob.TextCz, Glob.TextHg_, UserJz, Glob.效率, Glob.TextJs, TextLen, Glob.aTypeWords, Glob.TextDc_, UserTime, databaseSegmentId, this.lblTitle.Text, Glob.Instration, Glob.Difficulty, (int)Glob.Category, Glob.CurrentSessionId);
+                        //* 非发文模式下，保存后重置会话 ID，确保下次手动打段为新会话
+                        if (!NewSendText.发文状态)
+                        {
+                            Glob.CurrentSessionId = null;
+                        }
                         if (!Glob.DisableSaveAdvanced)
                         { // 保存高阶统计数据
                             string curveData = string.Join("|", Glob.ChartSpeedArr);
@@ -5620,6 +5631,7 @@ namespace WindowsFormsApplication2
             Glob.CurSegmentNum = 1;
             Glob.TempSegmentRecord.Clear();
             Glob.SendCursor = 0;
+            Glob.CurrentSessionId = System.Guid.NewGuid().ToString("N");
 
             // 还原发文全文（乱序模式下会被消耗）
             NewSendText.发文全文 = NewSendText.文章全文;

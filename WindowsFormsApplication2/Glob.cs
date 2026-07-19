@@ -90,6 +90,11 @@ namespace WindowsFormsApplication2
         /// </summary>
         public static int CurSegmentNum = 1225;
 
+        /// <summary>
+        /// 当前发文会话 ID
+        /// </summary>
+        public static string CurrentSessionId = null;
+
         public static int Time = 0;
         public static string Text;//跟打文字*****
         /// <summary>

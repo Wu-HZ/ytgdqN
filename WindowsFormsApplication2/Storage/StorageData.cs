@@ -41,6 +41,16 @@ namespace WindowsFormsApplication2.Storage
                 this.cmd.ExecuteNonQuery();
             }
 
+            //? add "session_id" column to old table
+            this.cmd.CommandText = "SELECT * FROM sqlite_master WHERE name='score' and sql like '%session_id%'";
+            object readState3 = this.cmd.ExecuteScalar();
+            if (readState3 == null)
+            {
+                this.cmd.CommandText = "ALTER TABLE score ADD COLUMN session_id TEXT DEFAULT NULL";
+                this.cmd.ExecuteNonQuery();
+                this.MigrateSessionIds();
+            }
+
             this.cmd.CommandText = "CREATE INDEX IF NOT EXISTS score_segment_id ON score (segment_id);";
             this.cmd.ExecuteNonQuery();
 
@@ -87,10 +97,45 @@ namespace WindowsFormsApplication2.Storage
         /// <param name="version"></param>
         /// <param name="difficulty"></param>
         /// <param name="category"></param>
-        public void InsertScore(string score_time, int segment_num, string speed, double keystroke, double code_len, double calc_len, int back_change, int backspace, int enter, int duplicate, int error, double back_rate, double accuracy_rate, int effciency, int keys, int count, int type_words, double words_rate, string cost_time, long segment_id, string article_title, string version, double difficulty, int category)
+        public void InsertScore(string score_time, int segment_num, string speed, double keystroke, double code_len, double calc_len, int back_change, int backspace, int enter, int duplicate, int error, double back_rate, double accuracy_rate, int effciency, int keys, int count, int type_words, double words_rate, string cost_time, long segment_id, string article_title, string version, double difficulty, int category, string session_id)
         {
-            this.cmd.CommandText = $"INSERT INTO score VALUES('{score_time}',{segment_num},'{speed}',{keystroke},{code_len},{calc_len},{back_change},{backspace},{enter},{duplicate},{error},{back_rate},{accuracy_rate},{effciency},{keys},{count},{type_words},{words_rate},'{cost_time}',{segment_id},'{this.ConvertText(article_title)}','{version}',{difficulty},{category});";
+            this.cmd.CommandText = $"INSERT INTO score VALUES('{score_time}',{segment_num},'{speed}',{keystroke},{code_len},{calc_len},{back_change},{backspace},{enter},{duplicate},{error},{back_rate},{accuracy_rate},{effciency},{keys},{count},{type_words},{words_rate},'{cost_time}',{segment_id},'{this.ConvertText(article_title)}','{version}',{difficulty},{category},'{session_id}');";
             this.cmd.ExecuteNonQuery();
+        }
+
+        private void MigrateSessionIds()
+        {
+            this.cmd.CommandText = "SELECT score_time, segment_num FROM score ORDER BY score_time ASC";
+            SQLiteDataReader reader = this.cmd.ExecuteReader();
+
+            string currentSessionId = System.Guid.NewGuid().ToString("N");
+            int prevSegmentNum = int.MaxValue;
+            var updates = new List<(string time, string sessionId)>();
+
+            while (reader.Read())
+            {
+                string time = reader.GetString(0);
+                int segNum = reader.GetInt32(1);
+
+                if (segNum <= 1 || segNum < prevSegmentNum - 2)
+                {
+                    currentSessionId = System.Guid.NewGuid().ToString("N");
+                }
+
+                updates.Add((time, currentSessionId));
+                prevSegmentNum = segNum;
+            }
+            reader.Close();
+
+            using (var transaction = this.cn.BeginTransaction())
+            {
+                foreach (var update in updates)
+                {
+                    this.cmd.CommandText = $"UPDATE score SET session_id='{update.sessionId}' WHERE score_time='{update.time.Replace(" ", "T")}'";
+                    this.cmd.ExecuteNonQuery();
+                }
+                transaction.Commit();
+            }
         }
 
         /// <summary>
@@ -512,6 +557,81 @@ namespace WindowsFormsApplication2.Storage
             StorageDataSet.ScoreDataTable myScore = new StorageDataSet.ScoreDataTable();
             adapter.Fill(myScore);
             return myScore;
+        }
+
+        public StorageDataSet.ScoreDataTable GetScoresBySessionId(string sessionId, int start, int limit)
+        {
+            this.cmd.CommandText = $"SELECT * FROM score WHERE session_id='{sessionId}' ORDER BY score_time ASC LIMIT {limit} OFFSET {start}";
+            SQLiteDataAdapter adapter = new SQLiteDataAdapter(this.cmd);
+            StorageDataSet.ScoreDataTable myScore = new StorageDataSet.ScoreDataTable();
+            adapter.Fill(myScore);
+            return myScore;
+        }
+
+        public int GetScoresCountBySessionId(string sessionId)
+        {
+            this.cmd.CommandText = $"SELECT COUNT(1) FROM score WHERE session_id='{sessionId}'";
+            object readNum = this.cmd.ExecuteScalar();
+            if (readNum == null)
+            {
+                return 0;
+            }
+            return Convert.ToInt32(readNum);
+        }
+
+        private string BuildSessionFilterCondition(DateTime startDate, DateTime endDate, string title, long? segmentId)
+        {
+            string where = $"score_time >= '{startDate:yyyy-MM-dd}T00:00:00' AND score_time < '{endDate.AddDays(1):yyyy-MM-dd}T00:00:00' AND session_id IS NOT NULL";
+            if (!string.IsNullOrEmpty(title))
+            {
+                where += $" AND article_title='{this.ConvertText(title)}'";
+            }
+            if (segmentId.HasValue)
+            {
+                where += $" AND segment_id={segmentId.Value}";
+            }
+            return where;
+        }
+
+        public int GetSessionCount(DateTime startDate, DateTime endDate, string title, long? segmentId)
+        {
+            this.cmd.CommandText = $"SELECT COUNT(DISTINCT session_id) FROM score WHERE {this.BuildSessionFilterCondition(startDate, endDate, title, segmentId)}";
+            object readNum = this.cmd.ExecuteScalar();
+            if (readNum == null)
+            {
+                return 0;
+            }
+            return Convert.ToInt32(readNum);
+        }
+
+        public StorageDataSet.ScoreDataTable GetSessionScores(DateTime startDate, DateTime endDate, string title, long? segmentId, int start, int limit)
+        {
+            this.cmd.CommandText = $@"
+SELECT s.* FROM score s
+INNER JOIN (
+    SELECT session_id, MIN(score_time) as first_time
+    FROM score
+    WHERE {this.BuildSessionFilterCondition(startDate, endDate, title, segmentId)}
+    GROUP BY session_id
+    ORDER BY first_time DESC
+    LIMIT {limit} OFFSET {start}
+) sess ON s.session_id = sess.session_id
+ORDER BY s.score_time ASC";
+            SQLiteDataAdapter adapter = new SQLiteDataAdapter(this.cmd);
+            StorageDataSet.ScoreDataTable myScore = new StorageDataSet.ScoreDataTable();
+            adapter.Fill(myScore);
+            return myScore;
+        }
+
+        public int GetSessionSegmentCount(string sessionId)
+        {
+            this.cmd.CommandText = $"SELECT COUNT(1) FROM score WHERE session_id='{sessionId}'";
+            object readNum = this.cmd.ExecuteScalar();
+            if (readNum == null)
+            {
+                return 0;
+            }
+            return Convert.ToInt32(readNum);
         }
     }
 
