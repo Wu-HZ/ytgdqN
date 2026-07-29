@@ -89,6 +89,7 @@ namespace WindowsFormsApplication2.History
             this.paginationPanel.Resize += (sender, e) => UpdatePaginationLayout();
             this.leftPanel.Resize += (sender, e) => UpdateLeftPanelLayout();
             this.SpeedChart.MouseDoubleClick += SpeedChart_MouseDoubleClick;
+            this.HistoryContextMenuStrip.Opening += HistoryContextMenuStrip_Opening;
 
             this.chartOverlay = new Panel();
             this.chartOverlay.Dock = DockStyle.Fill;
@@ -634,7 +635,9 @@ namespace WindowsFormsApplication2.History
                     (e.TotalWordsRate / n).ToString("0.00") + "%",
                     FormatSeconds(e.TotalSeconds),
                     e.Category);
-                this.dataGridView1.Rows[dataGridView1.RowCount - 1].Cells[1].Tag = e.SessionId;
+                int rowIdx = dataGridView1.RowCount - 1;
+                this.dataGridView1.Rows[rowIdx].Cells[1].Tag = e.SessionId;
+                this.dataGridView1.Rows[rowIdx].ContextMenuStrip = this.HistoryContextMenuStrip;
             }
 
             this.dataGridView1.Enabled = true;
@@ -953,14 +956,47 @@ namespace WindowsFormsApplication2.History
         }
 
         #region 表格右键菜单事件
+        private void HistoryContextMenuStrip_Opening(object sender, System.ComponentModel.CancelEventArgs e)
+        {
+            bool isDetail = !this.isSessionView;
+            this.CopyScoreToolStripMenuItem.Enabled = isDetail;
+            this.CopyPicToolStripMenuItem.Enabled = isDetail;
+            this.CopyContentToolStripMenuItem.Enabled = isDetail;
+            this.SpeedAnToolStripMenuItem.Enabled = isDetail;
+            this.TypeAnToolStripMenuItem.Enabled = isDetail;
+            this.KeyAnToolStripMenuItem.Enabled = isDetail;
+            this.RetypeToolStripMenuItem.Enabled = isDetail;
+            this.DeleteSegmentToolStripMenuItem.Enabled = isDetail;
+            this.DeletePageToolStripMenuItem.Enabled = isDetail;
+            if (this.isSessionView)
+            {
+                this.DeleteItemToolStripMenuItem.Text = "删除此发文记录";
+                this.DeleteItemToolStripMenuItem.Enabled = true;
+            }
+            else
+            {
+                this.DeleteItemToolStripMenuItem.Text = "删除此行记录";
+                this.DeleteItemToolStripMenuItem.Enabled = true;
+            }
+        }
+
         private void History_CellMoseDown(object sender, DataGridViewCellMouseEventArgs e)
         {
-            if (this.isSessionView)
+            if (this.isSessionView && e.RowIndex < 0)
             {
                 return;
             }
             this.gridHandler.SetMouseLocation(e);
-            this.ItemToolStripTextBox.Text = this.gridHandler.MenuGetScoreTime();
+            if (!this.isSessionView)
+            {
+                this.ItemToolStripTextBox.Text = this.gridHandler.MenuGetScoreTime();
+            }
+            else
+            {
+                // 会话视图中显示发文标题
+                DataGridViewRow curRow = this.dataGridView1.Rows[e.RowIndex];
+                this.ItemToolStripTextBox.Text = curRow.Cells[3].Value?.ToString() ?? "";
+            }
         }
 
         private void CopyScoreToolStripMenuItem_Click(object sender, EventArgs e)
@@ -998,54 +1034,7 @@ namespace WindowsFormsApplication2.History
             this.gridHandler.KeyAn();
         }
 
-        private void CalcKeysToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            this.gridHandler.CalcKeys();
-        }
 
-        private void SearchTitleToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            string articleTitle = this.gridHandler.GetArticleTitle();
-            if (!string.IsNullOrEmpty(articleTitle))
-            {
-                this.dataType.Title = articleTitle;
-                this.suppressArticleListEvent = true;
-                if (this.articleListBox.Items.Contains(articleTitle))
-                {
-                    this.articleListBox.SelectedItem = articleTitle;
-                }
-                else
-                {
-                    this.articleListBox.SelectedIndex = 0;
-                }
-                this.suppressArticleListEvent = false;
-
-                if (!this.isSessionView)
-                {
-                    this.isSessionView = true;
-                    this.currentSessionId = null;
-                    this.backButton.Visible = false;
-                }
-                this.RefreshData();
-            }
-        }
-
-        private void SearchSegmentToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            long segmentId = this.gridHandler.GetSegmentId(this.currentScoreData);
-            if (segmentId != -1)
-            {
-                this.dataType.SegmentId = segmentId;
-
-                if (!this.isSessionView)
-                {
-                    this.isSessionView = true;
-                    this.currentSessionId = null;
-                    this.backButton.Visible = false;
-                }
-                this.RefreshData();
-            }
-        }
 
         private void RetypeToolStripMenuItem_Click(object sender, EventArgs e)
         {
@@ -1183,25 +1172,51 @@ namespace WindowsFormsApplication2.History
         private void DeleteItemToolStripMenuItem_Click(object sender, EventArgs e)
         {
             string scoreTime = this.gridHandler.MenuGetScoreTime();
-            if (!string.IsNullOrEmpty(scoreTime))
+            if (string.IsNullOrEmpty(scoreTime))
             {
-                switch (MessageBox.Show("确认删除跟打时间为 " + scoreTime + " 的这条记录吗？", "删除询问", MessageBoxButtons.YesNo))
+                return;
+            }
+
+            if (this.isSessionView)
+            {
+                // 会话视图：删除整个发文
+                switch (MessageBox.Show("确认删除该发文的所有记录吗？", "删除询问", MessageBoxButtons.YesNo))
                 {
                     case DialogResult.Yes:
-                        if (Glob.ScoreHistory.DeleteScoreItemByTime(scoreTime))
-                        {
-                            this.RefreshAfterDelete();
-                        }
+                        Glob.ScoreHistory.DeleteScoreItemBySessionId(scoreTime);
+                        this.RefreshAfterDelete();
                         break;
                     case DialogResult.No:
                         break;
                 }
+                return;
+            }
+
+            switch (MessageBox.Show("确认删除跟打时间为 " + scoreTime + " 的这条记录吗？", "删除询问", MessageBoxButtons.YesNo))
+            {
+                case DialogResult.Yes:
+                    if (Glob.ScoreHistory.DeleteScoreItemByTime(scoreTime))
+                    {
+                        this.RefreshAfterDelete();
+                    }
+                    break;
+                case DialogResult.No:
+                    break;
             }
         }
 
         private void DeleteSegmentToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            long segmentId = this.gridHandler.GetSegmentId(this.currentScoreData);
+            string scoreTime = this.gridHandler.MenuGetScoreTime();
+            long segmentId = -1;
+            if (!string.IsNullOrEmpty(scoreTime))
+            {
+                StorageDataSet.ScoreRow sd = StorageDataSet.GetScoreRowFromTime(this.currentScoreData, scoreTime);
+                if (sd != null)
+                {
+                    segmentId = (long)sd["segment_id"];
+                }
+            }
             if (segmentId != -1)
             {
                 switch (MessageBox.Show("确认删除文段ID为 " + segmentId.ToString() + " 的所有记录吗？", "删除询问", MessageBoxButtons.YesNo))

@@ -12,9 +12,14 @@ namespace WindowsFormsApplication2.KeyAnalysis
     public partial class KeyAn : Form
     {
         /// <summary>
-        /// 按键信息
+        /// 按键信息（实际）
         /// </summary>
         private readonly int[] keysData;
+
+        /// <summary>
+        /// 按键信息（理论）
+        /// </summary>
+        private readonly int[] calcKeysData;
 
         /// <summary>
         /// 标识
@@ -28,12 +33,48 @@ namespace WindowsFormsApplication2.KeyAnalysis
 
         private readonly string titleText;
 
+        private CheckBox theoryCheckBox;
+
+        private bool isTheoryMode = false;
+
         public KeyAn(int[] keys_data, string _flag, string title = "")
         {
             this.keysData = keys_data;
+            this.calcKeysData = null;
             this.flag = _flag;
             this.titleText = title.Length > 0 ? title : "按键统计";
             InitializeComponent();
+        }
+
+        public KeyAn(int[] keys_data, int[] calc_keys_data, string _flag)
+        {
+            this.keysData = keys_data;
+            this.calcKeysData = calc_keys_data;
+            this.flag = _flag;
+            this.titleText = "按键统计";
+            InitializeComponent();
+
+            // 添加理论/实际切换复选框
+            this.theoryCheckBox = new CheckBox();
+            this.theoryCheckBox.Text = "理论";
+            this.theoryCheckBox.AutoSize = true;
+            this.theoryCheckBox.Location = new Point(this.splitContainer1.Panel2.Width - 80, 4);
+            this.theoryCheckBox.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            this.theoryCheckBox.CheckedChanged += TheoryCheckBox_CheckedChanged;
+            this.splitContainer1.Panel2.Controls.Add(this.theoryCheckBox);
+        }
+
+        private void TheoryCheckBox_CheckedChanged(object sender, EventArgs e)
+        {
+            this.isTheoryMode = this.theoryCheckBox.Checked;
+            if (this.isTheoryMode && this.calcKeysData != null)
+            {
+                this.ReloadKeyDisplay(this.calcKeysData);
+            }
+            else
+            {
+                this.ReloadKeyDisplay(this.keysData);
+            }
         }
 
         private void KeyAn_Load(object sender, EventArgs e)
@@ -93,14 +134,23 @@ namespace WindowsFormsApplication2.KeyAnalysis
                 KeySpaceButton
             };
 
-            if (this.keysData.Length == 50)
+            this.ReloadKeyDisplay(this.keysData);
+            this.FlagLabel.Text = flag;
+        }
+
+        /// <summary>
+        /// 根据按键数据刷新热图和统计
+        /// </summary>
+        private void ReloadKeyDisplay(int[] data)
+        {
+            if (data.Length == 50)
             {
-                int sum = this.keysData.Sum();
-                int sum2 = sum - this.keysData[13] - this.keysData[38] - this.keysData[49];
+                int sum = data.Sum();
+                int sum2 = sum - data[13] - data[38] - data[49];
                 this.AllKeysLabel.Text = sum.ToString();
-                for (int i = 0; i < keysData.Length; i++)
+                for (int i = 0; i < data.Length; i++)
                 {
-                    int count = keysData[i];
+                    int count = data[i];
                     double value;
                     if (i == 13 || i == 38 || i == 49)
                     {
@@ -199,7 +249,7 @@ namespace WindowsFormsApplication2.KeyAnalysis
                         btn.BackColor = Color.FromArgb(183, 28, 28);
                     }
                 }
-                int[] lrKeys = GetLRKeysCount(this.keysData);
+                int[] lrKeys = GetLRKeysCount(data);
                 this.LKeysLabel.Text = lrKeys[0].ToString();
                 this.RKeysLabel.Text = lrKeys[1].ToString();
                 this.LSKeysLabel.Text = lrKeys[5].ToString();
@@ -239,8 +289,6 @@ namespace WindowsFormsApplication2.KeyAnalysis
                     }
                 }
             }
-
-            this.FlagLabel.Text = flag;
         }
 
         private void KeyAn_KeyDown(object sender, KeyEventArgs e)

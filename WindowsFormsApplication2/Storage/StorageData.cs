@@ -452,6 +452,20 @@ namespace WindowsFormsApplication2.Storage
         }
 
         /// <summary>
+        /// 根据 session_id 删除整个发文的所有段记录
+        /// </summary>
+        /// <param name="sessionId"></param>
+        public void DeleteScoreItemBySessionId(string sessionId)
+        {
+            this.cmd.CommandText = $"DELETE FROM score WHERE session_id='{sessionId}'";
+            int count = this.cmd.ExecuteNonQuery();
+            if (count > 20)
+            {
+                this.CleanDisk();
+            }
+        }
+
+        /// <summary>
         /// 根据日期删除记录
         /// </summary>
         /// <param name="date"></param>

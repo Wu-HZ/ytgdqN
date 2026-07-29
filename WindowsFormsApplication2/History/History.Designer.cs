@@ -95,11 +95,7 @@
             this.SpeedAnToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.TypeAnToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.KeyAnToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.CalcKeysToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.toolStripSeparator2 = new System.Windows.Forms.ToolStripSeparator();
-            this.SearchTitleToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.SearchSegmentToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.toolStripSeparator3 = new System.Windows.Forms.ToolStripSeparator();
             this.RetypeToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.toolStripSeparator5 = new System.Windows.Forms.ToolStripSeparator();
             this.DeleteGroupToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -536,11 +532,7 @@
             this.SpeedAnToolStripMenuItem,
             this.TypeAnToolStripMenuItem,
             this.KeyAnToolStripMenuItem,
-            this.CalcKeysToolStripMenuItem,
             this.toolStripSeparator2,
-            this.SearchTitleToolStripMenuItem,
-            this.SearchSegmentToolStripMenuItem,
-            this.toolStripSeparator3,
             this.RetypeToolStripMenuItem,
             this.toolStripSeparator5,
             this.DeleteGroupToolStripMenuItem});
@@ -622,37 +614,10 @@
             this.KeyAnToolStripMenuItem.Text = "按键统计...";
             this.KeyAnToolStripMenuItem.Click += new System.EventHandler(this.KeyAnToolStripMenuItem_Click);
             // 
-            // CalcKeysToolStripMenuItem
-            // 
-            this.CalcKeysToolStripMenuItem.ForeColor = System.Drawing.SystemColors.Highlight;
-            this.CalcKeysToolStripMenuItem.Name = "CalcKeysToolStripMenuItem";
-            this.CalcKeysToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
-            this.CalcKeysToolStripMenuItem.Text = "理论按键统计...";
-            this.CalcKeysToolStripMenuItem.Click += new System.EventHandler(this.CalcKeysToolStripMenuItem_Click);
-            // 
             // toolStripSeparator2
             // 
             this.toolStripSeparator2.Name = "toolStripSeparator2";
             this.toolStripSeparator2.Size = new System.Drawing.Size(177, 6);
-            // 
-            // SearchTitleToolStripMenuItem
-            // 
-            this.SearchTitleToolStripMenuItem.Name = "SearchTitleToolStripMenuItem";
-            this.SearchTitleToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
-            this.SearchTitleToolStripMenuItem.Text = "搜索标题";
-            this.SearchTitleToolStripMenuItem.Click += new System.EventHandler(this.SearchTitleToolStripMenuItem_Click);
-            // 
-            // SearchSegmentToolStripMenuItem
-            // 
-            this.SearchSegmentToolStripMenuItem.Name = "SearchSegmentToolStripMenuItem";
-            this.SearchSegmentToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
-            this.SearchSegmentToolStripMenuItem.Text = "搜索文段";
-            this.SearchSegmentToolStripMenuItem.Click += new System.EventHandler(this.SearchSegmentToolStripMenuItem_Click);
-            // 
-            // toolStripSeparator3
-            // 
-            this.toolStripSeparator3.Name = "toolStripSeparator3";
-            this.toolStripSeparator3.Size = new System.Drawing.Size(177, 6);
             // 
             // RetypeToolStripMenuItem
             // 
@@ -1198,9 +1163,7 @@
         private System.Windows.Forms.Label ResultLabel;
         private System.Windows.Forms.CheckBox TrendChartCheckBox;
         private System.Windows.Forms.ToolTip toolTip1;
-        private System.Windows.Forms.ToolStripMenuItem SearchTitleToolStripMenuItem;
-        private System.Windows.Forms.ToolStripSeparator toolStripSeparator3;
-        private System.Windows.Forms.ToolStripMenuItem SearchSegmentToolStripMenuItem;
+
         private System.Windows.Forms.ToolStripMenuItem CopyPicToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem KeyAnToolStripMenuItem;
         private System.Windows.Forms.ToolStripTextBox ItemToolStripTextBox;
@@ -1225,7 +1188,7 @@
         private System.Windows.Forms.ToolStripMenuItem DeleteItemToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem DeletePageToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem DeleteSegmentToolStripMenuItem;
-        private System.Windows.Forms.ToolStripMenuItem CalcKeysToolStripMenuItem;
+
         private System.Windows.Forms.DataGridViewTextBoxColumn 序;
         private System.Windows.Forms.DataGridViewTextBoxColumn 时间;
         private System.Windows.Forms.DataGridViewTextBoxColumn 段号;

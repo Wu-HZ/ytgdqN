@@ -6747,7 +6747,7 @@ namespace WindowsFormsApplication2
 
         private void GridCalcKeysToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            this.gridHandler.CalcKeys();
+            this.gridHandler.KeyAn();
         }
 
         private void GridRetypeToolStripMenuItem_Click(object sender, EventArgs e)

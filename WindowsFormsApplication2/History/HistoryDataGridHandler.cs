@@ -192,81 +192,45 @@ namespace WindowsFormsApplication2.History
         }
 
         /// <summary>
-        /// 按键统计
+        /// 按键统计（含实际/理论切换）
         /// </summary>
         public void KeyAn()
         {
             string scoreTime = this.MenuGetScoreTime();
-            if (!string.IsNullOrEmpty(scoreTime))
+            if (string.IsNullOrEmpty(scoreTime))
             {
-                string adv = Glob.ScoreHistory.GetAdvancedDataFromTime(scoreTime, "key_analysis");
-                if (!string.IsNullOrEmpty(adv))
-                {
-                    int[] keysData = Array.ConvertAll(adv.Split('|'), s => int.Parse(s));
-                    KeyAn kan = new KeyAn(keysData, scoreTime);
-                    kan.Show();
-                }
-                else
-                {
-                    MessageBox.Show("没有找到高阶统计数据！");
-                }
+                return;
+            }
+
+            string adv = Glob.ScoreHistory.GetAdvancedDataFromTime(scoreTime, "key_analysis");
+            if (string.IsNullOrEmpty(adv))
+            {
+                MessageBox.Show("没有找到高阶统计数据！");
+                return;
+            }
+
+            int[] keysData = Array.ConvertAll(adv.Split('|'), s => int.Parse(s));
+
+            // 尝试加载理论按键数据
+            string calcStr = Glob.ScoreHistory.GetCalcDataFromTime(scoreTime);
+            int[] calcKeysData = null;
+            if (!string.IsNullOrEmpty(calcStr))
+            {
+                calcKeysData = Array.ConvertAll(calcStr.Split('|'), s => int.Parse(s));
+            }
+
+            if (calcKeysData != null)
+            {
+                KeyAn kan = new KeyAn(keysData, calcKeysData, scoreTime);
+                kan.Show();
+            }
+            else
+            {
+                KeyAn kan = new KeyAn(keysData, scoreTime);
+                kan.Show();
             }
         }
 
-        /// <summary>
-        /// 理论按键统计
-        /// </summary>
-        public void CalcKeys()
-        {
-            string scoreTime = this.MenuGetScoreTime();
-            if (!string.IsNullOrEmpty(scoreTime))
-            {
-                string keys = Glob.ScoreHistory.GetCalcDataFromTime(scoreTime);
-                if (!string.IsNullOrEmpty(keys))
-                {
-                    int[] keysData = Array.ConvertAll(keys.Split('|'), s => int.Parse(s));
-                    KeyAn kan = new KeyAn(keysData, scoreTime, "理论按键统计");
-                    kan.Show();
-                }
-                else
-                {
-                    MessageBox.Show("没有找到理论按键统计数据！");
-                }
-            }
-        }
-
-        /// <summary>
-        /// 获取文段标题
-        /// </summary>
-        /// <returns></returns>
-        public string GetArticleTitle()
-        {
-            DataGridViewRow curRow = this.historyDataGridView.Rows[this.mouseLocation.RowIndex];
-            if (curRow != null)
-            {
-                return curRow.Cells["标题"].Value.ToString().Trim();
-            }
-            return "";
-        }
-
-        /// <summary>
-        /// 获取文段 id
-        /// </summary>
-        /// <param name="curData"></param>
-        /// <returns></returns>
-        public long GetSegmentId(StorageDataSet.ScoreDataTable curData)
-        {
-            string scoreTime = this.MenuGetScoreTime();
-            if (!string.IsNullOrEmpty(scoreTime))
-            {
-                StorageDataSet.ScoreRow sd = StorageDataSet.GetScoreRowFromTime(curData, scoreTime);
-                if (sd != null)
-                {
-                    return (long)sd["segment_id"];
-                }
-            }
-            return -1;
-        }
 
         /// <summary>
         /// 获取重打内容
