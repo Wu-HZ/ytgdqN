@@ -52,6 +52,12 @@ namespace WindowsFormsApplication2
         public int sw = 0;
 
         /// <summary>
+        /// 鼠标自动隐藏定时器
+        /// </summary>
+        private System.Windows.Forms.Timer cursorHideTimer;
+        private bool cursorHidden = false;
+
+        /// <summary>
         /// 开始跟打时间
         /// </summary>
         private DateTime startTime;
@@ -232,6 +238,16 @@ namespace WindowsFormsApplication2
             }
             catch { this.lbl键准.Text = "NA"; }
             this.textBoxEx1.LostFocus += new System.EventHandler(textBoxEx1_LostFocus);
+
+            // 鼠标自动隐藏：跟打时隐藏，移动鼠标时显示，2秒无操作再次隐藏
+            this.MouseMove += Form1_MouseMove;
+            this.cursorHideTimer = new System.Windows.Forms.Timer();
+            this.cursorHideTimer.Interval = 2000;
+            this.cursorHideTimer.Tick += (s, ev) =>
+            {
+                if (sw > 0 && this.textBoxEx1.Focused)
+                    HideCursor();
+            };
 
             //载入主题
             GetTheme();
@@ -2235,6 +2251,7 @@ namespace WindowsFormsApplication2
                     sw++;
                     if (Sw == 1)
                     { // 进入到 TextCahnged 事件后 Sw 至少是 1
+                        HideCursor();
                         startTime = DateTime.Now; // 开始跟打时间
                         sTime = startTime;
                         //! 由于可能会出现 timer1_Tick() 还未触发的情况，导致 Glob.typeUseTime 中的值还保留为上一段结束的值，
@@ -4232,8 +4249,44 @@ namespace WindowsFormsApplication2
         //失去焦点自动暂停
         private void textBoxEx1_LostFocus(object sender, EventArgs e)
         {
+            ShowCursor();
+            cursorHideTimer.Stop();
             PauseType();
         }
+
+        #region 鼠标自动隐藏
+        private void HideCursor()
+        {
+            if (!cursorHidden)
+            {
+                System.Windows.Forms.Cursor.Hide();
+                cursorHidden = true;
+            }
+        }
+
+        private void ShowCursor()
+        {
+            if (cursorHidden)
+            {
+                System.Windows.Forms.Cursor.Show();
+                cursorHidden = false;
+            }
+        }
+
+        private void Form1_MouseMove(object sender, MouseEventArgs e)
+        {
+            if (cursorHidden)
+            {
+                ShowCursor();
+            }
+            if (sw > 0 && this.textBoxEx1.Focused)
+            {
+                // 鼠标移动后重置定时器，2 秒后再隐藏
+                cursorHideTimer.Stop();
+                cursorHideTimer.Start();
+            }
+        }
+        #endregion
 
         #region 暂停时跟打用时闪烁
         private bool LblTimeFlash = true;
