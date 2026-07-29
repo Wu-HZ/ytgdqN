@@ -73,7 +73,8 @@ namespace WindowsFormsApplication2.History
         private int TotalPage { 
             get
             {
-                return (int)Math.Ceiling((float)this.totalCount / this.PageSize);
+                int pages = (int)Math.Ceiling((float)this.totalCount / this.PageSize);
+                return Math.Max(1, pages);
             } 
         }
 
@@ -256,14 +257,7 @@ namespace WindowsFormsApplication2.History
                 this.totalCount = Glob.ScoreHistory.GetSessionCount(
                     this.dataType.Date, this.dataType.EndDate, this.dataType.Title, this.dataType.SegmentId);
 
-                if (this.TotalPage > 0)
-                {
-                    this.currentPage = 1;
-                }
-                else
-                {
-                    this.currentPage = 0;
-                }
+                this.currentPage = 1;
 
                 this.UpdateGridToolBar();
 
@@ -281,14 +275,7 @@ namespace WindowsFormsApplication2.History
                 this.totalCount = Glob.ScoreHistory.GetScoreCountFiltered(
                     this.dataType.Date, this.dataType.EndDate, this.dataType.Title, this.dataType.SegmentId);
 
-                if (this.TotalPage > 0)
-                {
-                    this.currentPage = 1;
-                }
-                else
-                {
-                    this.currentPage = 0;
-                }
+                this.currentPage = 1;
 
                 this.UpdateGridToolBar();
 
@@ -299,15 +286,16 @@ namespace WindowsFormsApplication2.History
                     this.ReloadChartScoreData();
                 }
 
-                this.ShowGridData();
+                this.SetupDetailColumns();
+                this.FillDetailGrid();
             }
             this.RefreshChart();
         }
 
         /// <summary>
-        /// 展示数据
+        /// 填充详情表格（含重打差异对比行）
         /// </summary>
-        private void ShowGridData()
+        private void FillDetailGrid()
         {
             int index = 0;
             long lastSegmentId = -1;
@@ -620,10 +608,10 @@ namespace WindowsFormsApplication2.History
             }
 
             int index = 0;
-            foreach (var kvp in sessions)
+            var sortedSessions = sessions.Values.OrderByDescending(e => e.FirstTime).ToList();
+            foreach (var e in sortedSessions)
             {
                 index++;
-                var e = kvp.Value;
                 int n = e.SegCount;
                 string datePart = e.FirstTime.Substring(0, 10);
                 string timePart = e.FirstTime.Substring(11);
@@ -646,7 +634,7 @@ namespace WindowsFormsApplication2.History
                     (e.TotalWordsRate / n).ToString("0.00") + "%",
                     FormatSeconds(e.TotalSeconds),
                     e.Category);
-                this.dataGridView1.Rows[dataGridView1.RowCount - 1].Cells[1].Tag = kvp.Key;
+                this.dataGridView1.Rows[dataGridView1.RowCount - 1].Cells[1].Tag = e.SessionId;
             }
 
             this.dataGridView1.Enabled = true;
@@ -672,86 +660,8 @@ namespace WindowsFormsApplication2.History
                 " (" + this.currentScoreData.Count.ToString() + "段)";
             this.UpdateGridToolBar();
             this.SetupDetailColumns();
-            this.ShowDetailGridData();
+            this.FillDetailGrid();
             this.RefreshChart();
-        }
-
-        private void ShowDetailGridData()
-        {
-            int index = 0;
-            long lastSegmentId = -1;
-            foreach (var dataRow in this.currentScoreData)
-            {
-                string typeCountStr = "";
-                string[] curSpeed = dataRow["speed"].ToString().Split('/');
-                double speedVal = double.Parse(curSpeed[0]);
-                Glob.CategoryValue categoryVal = (Glob.CategoryValue)dataRow["category"];
-                bool isEn = CategoryHandler.IsEn(categoryVal);
-                if (isEn)
-                {
-                    speedVal *= 5;
-                }
-
-                if ((long)dataRow["segment_id"] == lastSegmentId)
-                {
-                    int rowCount = this.dataGridView1.Rows.Count - 1;
-                    string[] oldSpeed = this.dataGridView1.Rows[rowCount].Cells[3].Value.ToString().Split('/');
-                    double speedPlus;
-                    if (isEn)
-                    {
-                        speedPlus = speedVal / 5 - double.Parse(oldSpeed[0]);
-                    }
-                    else
-                    {
-                        speedPlus = speedVal - double.Parse(oldSpeed[0]);
-                    }
-                    double keystrokePlus = (double)dataRow["keystroke"] - double.Parse(this.dataGridView1.Rows[rowCount].Cells[4].Value.ToString());
-                    double codeLenPlus = (double)dataRow["code_len"] - double.Parse(this.dataGridView1.Rows[rowCount].Cells[5].Value.ToString());
-                    this.dataGridView1.Rows.Add("", "", "", (speedPlus > 0 ? "+" : "") + speedPlus.ToString("0.00"), (keystrokePlus > 0 ? "+" : "") + keystrokePlus.ToString("0.00"), (codeLenPlus > 0 ? "+" : "") + codeLenPlus.ToString("0.00"));
-                    rowCount++;
-                    this.dataGridView1.Rows[rowCount].Height = 10;
-                    this.dataGridView1.Rows[rowCount].DefaultCellStyle.Font = new Font("Arial", 6.8f);
-                    this.dataGridView1.Rows[rowCount].DefaultCellStyle.ForeColor = Color.LightGray;
-                    if (speedPlus > 0)
-                    {
-                        this.dataGridView1.Rows[rowCount].Cells[3].Style.ForeColor = Color.FromArgb(253, 108, 108);
-                    }
-                    if (keystrokePlus > 0)
-                    {
-                        this.dataGridView1.Rows[rowCount].Cells[4].Style.ForeColor = Color.FromArgb(255, 129, 233);
-                    }
-                    if (codeLenPlus < 0)
-                    {
-                        this.dataGridView1.Rows[rowCount].Cells[5].Style.ForeColor = Color.FromArgb(124, 222, 255);
-                    }
-                    for (int i = 0; i < 24; i++)
-                    {
-                        if (i == 3 || i == 4 || i == 5)
-                        {
-                            this.dataGridView1.Rows[rowCount].Cells[i].Style.BackColor = Color.FromArgb(90, 90, 90);
-                        }
-                    }
-                }
-                else
-                {
-                    index++;
-                    typeCountStr = index.ToString();
-                }
-
-                double diff = (double)dataRow["difficulty"];
-                string cateText = CategoryHandler.GetCategoryText(categoryVal);
-                DateTime scoreTime = Convert.ToDateTime(dataRow["score_time"]);
-                this.dataGridView1.Rows.Add(typeCountStr, scoreTime.ToString("HH:mm:ss"), dataRow["segment_num"], dataRow["speed"], ((double)dataRow["keystroke"]).ToString("0.00"), ((double)dataRow["code_len"]).ToString("0.00"), ((double)dataRow["calc_len"]).ToString("0.00"), diff.ToString("0.00"), (diff * speedVal).ToString("0.00"), dataRow["back_change"], dataRow["backspace"], dataRow["enter"], dataRow["duplicate"], dataRow["error"], dataRow["back_rate"] + "%", dataRow["accuracy_rate"] + "%", dataRow["effciency"] + "%", dataRow["keys"], dataRow["count"], dataRow["type_words"], dataRow["words_rate"] + "%", dataRow["cost_time"], cateText, dataRow["article_title"]);
-                this.dataGridView1.Rows[dataGridView1.RowCount - 1].Cells[1].Tag = scoreTime.ToString("yyyy-MM-dd HH:mm:ss");
-                this.dataGridView1.Rows[dataGridView1.RowCount - 1].ContextMenuStrip = this.HistoryContextMenuStrip;
-                CellHighlight.Speed(dataGridView1.Rows[dataGridView1.RowCount - 1].Cells[3], speedVal, diff);
-                CellHighlight.Keystroke(dataGridView1.Rows[dataGridView1.RowCount - 1].Cells[4], (double)dataRow["keystroke"]);
-                CellHighlight.CodeLen(dataGridView1.Rows[dataGridView1.RowCount - 1].Cells[5], (double)dataRow["code_len"], (double)dataRow["calc_len"]);
-                CellHighlight.Error(dataGridView1.Rows[dataGridView1.RowCount - 1].Cells[13], (int)dataRow["error"]);
-                lastSegmentId = (long)dataRow["segment_id"];
-            }
-
-            this.dataGridView1.Enabled = true;
         }
 
         private void BackButton_Click(object sender, EventArgs e)
@@ -1151,7 +1061,7 @@ namespace WindowsFormsApplication2.History
                     (pageNum - 1) * PageSize, PageSize);
                 this.ReloadChartScoreData();
                 this.SetupDetailColumns();
-                this.ShowGridData();
+                this.FillDetailGrid();
             }
             this.RefreshChart();
         }
@@ -1233,7 +1143,7 @@ namespace WindowsFormsApplication2.History
             if (this.totalCount <= 0)
             {
                 this.totalCount = 0;
-                this.currentPage = 0;
+                this.currentPage = 1;
                 this.UpdateGridToolBar();
                 this.ClearGridData();
             }
@@ -1247,6 +1157,8 @@ namespace WindowsFormsApplication2.History
                 this.JumpPageHandler(this.currentPage);
             }
             this.LoadArticleList();
+            this.MonthCalendar.BoldedDates = Glob.ScoreHistory.GetAllScoreDates();
+            this.MonthCalendar.UpdateBoldedDates();
         }
 
         private void DeleteItemToolStripMenuItem_Click(object sender, EventArgs e)
@@ -1464,6 +1376,8 @@ namespace WindowsFormsApplication2.History
                     this.backButton.Visible = false;
                     this.ResultLabel.Location = new Point(6, 4);
                     this.LoadArticleList();
+                    this.MonthCalendar.BoldedDates = Glob.ScoreHistory.GetAllScoreDates();
+                    this.MonthCalendar.UpdateBoldedDates();
                     this.RefreshData();
                     break;
                 case DialogResult.No:
