@@ -871,7 +871,8 @@ namespace WindowsFormsApplication2.History
 
         private void RefreshChart()
         {
-            if (this.showTrendChart)
+            // 会话视图中行数据是聚合结果，无法展示单次曲线，始终显示趋势图
+            if (this.showTrendChart || this.isSessionView)
             {
                 this.ShowTrendChart();
             }
@@ -920,12 +921,30 @@ namespace WindowsFormsApplication2.History
 
         private void HistorySelectionChanged(object sender, EventArgs e)
         {
+            DataGridViewRow curRow = (sender as DataGridView).CurrentRow;
+
             if (this.isSessionView)
             {
+                // 会话视图：更新预览面板并加载该发文的全部段成绩到图表
+                if (curRow != null && curRow.Cells.Count > 3
+                    && curRow.Cells[1].Tag is string sessionId && !string.IsNullOrEmpty(sessionId))
+                {
+                    string title = curRow.Cells[3].Value?.ToString() ?? "";
+                    string segCount = curRow.Cells[4].Value?.ToString() ?? "0";
+                    string speed = curRow.Cells[5].Value?.ToString() ?? "0";
+                    string date = curRow.Cells[1].Value?.ToString() ?? "";
+                    string time = curRow.Cells[2].Value?.ToString() ?? "";
+                    this.PreviewGroupBox.Text = "发文概览";
+                    this.PreviewRichTextBox.Text =
+                        $"标题：{title}\r\n日期：{date} {time}\r\n段数：{segCount}\r\n均速：{speed}";
+
+                    // 加载该发文的全部段成绩用于图表
+                    this.chartScoreData = Glob.ScoreHistory.GetScoresBySessionId(sessionId, 0, 1000);
+                    this.RefreshChart();
+                }
                 return;
             }
 
-            DataGridViewRow curRow = (sender as DataGridView).CurrentRow;
             this.UpdatePreview(curRow);
             if (!this.showTrendChart)
             {
