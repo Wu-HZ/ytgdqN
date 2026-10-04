@@ -56,6 +56,9 @@ namespace WindowsFormsApplication2
         /// </summary>
         private System.Windows.Forms.Timer cursorHideTimer;
         private bool cursorHidden = false;
+        private double progressBarRatio;
+        private string progressBarText = "";
+        private double splitterProgressRatio;
 
         /// <summary>
         /// 开始跟打时间
@@ -180,6 +183,8 @@ namespace WindowsFormsApplication2
         public Form1()
         {
             InitializeComponent();
+            this.picBar.Paint += PicBar_Paint;
+            this.splitContainer1.Paint += SplitContainer1_Paint;
             ConfigureRealtimeScoreGrid();
             int spX, spY;
             int spW, spH;
@@ -849,7 +854,7 @@ namespace WindowsFormsApplication2
             }
             //跟打地图
             Bitmap bmp_ = new Bitmap(this.picMap.ClientRectangle.Width, this.picMap.ClientRectangle.Height);
-            this.picMap.Image = bmp_;
+            ReplacePictureBoxImage(this.picMap, bmp_);
             //tableLayoutPanel1.GetType().GetProperty("DoubleBuffered", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic).SetValue(tableLayoutPanel1, true, null);
             this.chartSpeed.ChartAreas.Add(ChartArea1);
             this.ChartArea1.AxisX2.LineDashStyle = ChartDashStyle.Dash;
@@ -2124,11 +2129,11 @@ namespace WindowsFormsApplication2
                 }
                 //跟打地图
                 Bitmap bmp_ = new Bitmap(this.picMap.ClientRectangle.Width, this.picMap.ClientRectangle.Height);
-                this.picMap.Image = bmp_;
+                ReplacePictureBoxImage(this.picMap, bmp_);
                 this.lbl地图长度.Text = "";
                 //跟打长度
                 Bitmap bmp_1 = new Bitmap(this.picBar.ClientRectangle.Width, this.picBar.ClientRectangle.Height);
-                this.picBar.Image = bmp_1;
+                ReplacePictureBoxImage(this.picBar, bmp_1);
                 this.lbl回改显示.Text = "回改";
                 this.lbl错字显示.Text = "错字";
                 //编码显示归零
@@ -3270,15 +3275,25 @@ namespace WindowsFormsApplication2
             }
         }
 
-        //跟打地图
-        private void Type_Map(Color C, float X, float W)
+        private static void ReplacePictureBoxImage(PictureBox pictureBox, Image image)
         {
-            Bitmap bmp = new Bitmap(this.picMap.Image);//new Bitmap(this.pictureBox1.ClientRectangle.Width, this.pictureBox1.ClientRectangle.Height);
-            Glob.Type_Map = Graphics.FromImage(bmp);
-            Glob.Type_Map.DrawLine(new Pen(C, W), X, 0, X, bmp.Height);
-            //Glob.Type_Map.DrawRectangle(new Pen(C, 1),X,0,W,bmp.Height);
-            //Glob.Type_Map.FillRectangle(new (C, 1), X, 0, W, bmp.Height);
-            this.picMap.Image = bmp;
+            Image previous = pictureBox.Image;
+            pictureBox.Image = image;
+            if (previous != null && !ReferenceEquals(previous, image))
+                previous.Dispose();
+        }
+
+        //跟打地图
+        private void Type_Map(Color color, float x, float width)
+        {
+            if (this.picMap.Image is not Bitmap bitmap || bitmap.Width == 0 || bitmap.Height == 0)
+                return;
+
+            // 跟打地图只追加一条线；原地绘制，避免每个字符复制整张位图并遗失旧图资源。
+            using (Graphics graphics = Graphics.FromImage(bitmap))
+            using (Pen pen = new Pen(color, width))
+                graphics.DrawLine(pen, x, 0, x, bitmap.Height);
+            this.picMap.Invalidate();
         }
 
         private void splitContainer1_SplitterMoved(object sender, SplitterEventArgs e)
@@ -3293,40 +3308,46 @@ namespace WindowsFormsApplication2
         /// <param name="text">绘制文字</param>
         private void picBar_Draw(double pro, string text)
         {
-            Bitmap bmp = new Bitmap(this.picBar.Width, this.picBar.Height);
-            Graphics g = Graphics.FromImage(bmp);
-            double width = this.picBar.Width * pro;
-            float f = 1f;//进度宽度
-            Color C = Theme.ThemeColorBG; //进度线条
+            this.progressBarRatio = Math.Max(0, Math.Min(1, double.IsNaN(pro) ? 0 : pro));
+            this.progressBarText = text ?? "";
+            this.picBar.Invalidate();
+            this.SplitterBar(this.progressBarRatio);
+        }
 
-            //画进度
-            Rectangle rect = new Rectangle(0, 0, (int)width, this.picBar.Height);
-
-            g.FillRectangle(new SolidBrush(Theme.SecondFC), rect);
-            g.DrawLine(new Pen(C, f), rect.Width - f + 1, 0, rect.Width - f + 1, (float)rect.Height);
-            //画字
-            Font F = new Font("宋体", 9f);
-            SizeF s = g.MeasureString(text, F);
-            int fontWidth = (int)Math.Ceiling(s.Width);
-            g.DrawString(text, F, new SolidBrush(Theme.GetTranColor(Theme.SecondFC, 120)), this.picBar.Width / 2 - fontWidth / 2, this.picBar.Height / 2 - s.Height / 2 + 1);
-
-            this.picBar.Image = bmp;
-            SplitterBar(pro);
+        private void PicBar_Paint(object sender, PaintEventArgs e)
+        {
+            int fillWidth = (int)(this.picBar.ClientSize.Width * this.progressBarRatio);
+            Rectangle fill = new Rectangle(0, 0, fillWidth, this.picBar.ClientSize.Height);
+            using (var brush = new SolidBrush(Theme.SecondFC))
+                e.Graphics.FillRectangle(brush, fill);
+            using (var pen = new Pen(Theme.ThemeColorBG, 1f))
+                e.Graphics.DrawLine(pen, fillWidth, 0, fillWidth, this.picBar.ClientSize.Height);
+            using (var font = new Font("宋体", 9f))
+            using (var brush = new SolidBrush(Theme.GetTranColor(Theme.SecondFC, 120)))
+            {
+                SizeF size = e.Graphics.MeasureString(this.progressBarText, font);
+                e.Graphics.DrawString(this.progressBarText, font, brush,
+                    this.picBar.ClientSize.Width / 2 - size.Width / 2,
+                    this.picBar.ClientSize.Height / 2 - size.Height / 2 + 1);
+            }
         }
 
         private void SplitterBar(double pro)
         {
-            //测试 拆分条 的 绘图
-            Graphics g_ = this.splitContainer1.CreateGraphics();
-            Color Show = Theme.GetReverseColor(Theme.ThemeColorBG);
-            g_.Clear(Theme.ThemeColorBG);
-            using (SolidBrush sb = new SolidBrush(Show))
-            {
-                Rectangle r = this.splitContainer1.SplitterRectangle;
-                Rectangle r_ = new Rectangle(r.X, r.Y, (int)(r.Width * pro), r.Height);
-                g_.FillRectangle(sb, r_);
-            }
-            g_.Dispose();
+            this.splitterProgressRatio = Math.Max(0, Math.Min(1, double.IsNaN(pro) ? 0 : pro));
+            Rectangle splitter = this.splitContainer1.SplitterRectangle;
+            if (splitter.Width > 0 && splitter.Height > 0)
+                this.splitContainer1.Invalidate(splitter);
+        }
+
+        private void SplitContainer1_Paint(object sender, PaintEventArgs e)
+        {
+            Rectangle splitter = this.splitContainer1.SplitterRectangle;
+            if (splitter.Width <= 0 || splitter.Height <= 0) return;
+            Rectangle fill = new Rectangle(splitter.X, splitter.Y,
+                (int)(splitter.Width * this.splitterProgressRatio), splitter.Height);
+            using (var brush = new SolidBrush(Theme.GetReverseColor(Theme.ThemeColorBG)))
+                e.Graphics.FillRectangle(brush, fill);
         }
         //成绩分析
         private void 跟打分析ToolStripMenuItem_Click(object sender, EventArgs e)
@@ -4590,7 +4611,9 @@ namespace WindowsFormsApplication2
                             Glob.MinSplite = Glob.chartSpeedTo;
                             this.ChartArea1.AxisY.Minimum = (int)(Glob.MinSplite / 20) * 10;
                         }
-                        this.ChartArea1.AxisX.Interval = this.SeriesSpeed.Points.Count / 5;
+                        int interval = Math.Max(1, this.SeriesSpeed.Points.Count / 5);
+                        if (this.ChartArea1.AxisX.Interval != interval)
+                            this.ChartArea1.AxisX.Interval = interval;
                     }
                 }
                 catch { }
@@ -6596,7 +6619,6 @@ namespace WindowsFormsApplication2
         {
             // 处理自定义滚动条位置
             this.textBoxVScrollBar1.Value = GetScrollPos((int)this.richTextBox1.Handle, 1);
-            Application.DoEvents();
 
             if (Glob.IsPointIt)
             {

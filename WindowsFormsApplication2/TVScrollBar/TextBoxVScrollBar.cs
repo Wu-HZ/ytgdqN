@@ -373,7 +373,6 @@ namespace WindowsFormsApplication2.TVScrollBar
                 }
                 float tPrec = (float)this.thumbTop / this.PixelRange;
                 this.tValue = (int)(tPrec * this.RealRange);
-                Application.DoEvents();
                 Invalidate();
             }
         }
