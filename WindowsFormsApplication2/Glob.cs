@@ -329,6 +329,7 @@ namespace WindowsFormsApplication2
         //错次
         public static int FalseCount = 0;
         public static ArrayList FWords = new ArrayList();
+        public static List<WindowsFormsApplication2.Storage.WrongCharEvent> WrongCharHistory = new List<WindowsFormsApplication2.Storage.WrongCharEvent>();
         /// <summary>
         /// 错字跳转标记
         /// </summary>

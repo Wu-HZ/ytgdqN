@@ -80,6 +80,9 @@ namespace WindowsFormsApplication2.History
 
         private Panel chartOverlay;
 
+        private readonly Ini historyConfig = new Ini("config.ini");
+        private readonly ContextMenuStrip detailHeaderMenu = new ContextMenuStrip();
+
         public History(Form1 frm1)
         {
             this.frm = frm1;
@@ -90,6 +93,9 @@ namespace WindowsFormsApplication2.History
             this.leftPanel.Resize += (sender, e) => UpdateLeftPanelLayout();
             this.SpeedChart.MouseDoubleClick += SpeedChart_MouseDoubleClick;
             this.HistoryContextMenuStrip.Opening += HistoryContextMenuStrip_Opening;
+            this.AddTypingDetailMenuItems();
+            this.dataGridView1.ColumnHeaderMouseClick += DataGridView1_ColumnHeaderMouseClick;
+            this.detailHeaderMenu.Opening += DetailHeaderMenu_Opening;
 
             this.chartOverlay = new Panel();
             this.chartOverlay.Dock = DockStyle.Fill;
@@ -478,6 +484,58 @@ namespace WindowsFormsApplication2.History
             this.dataGridView1.Columns["段号"].DefaultCellStyle.ForeColor = Color.FromArgb(224, 224, 224);
             this.dataGridView1.Columns["段号"].DefaultCellStyle.SelectionBackColor = Color.DimGray;
             this.dataGridView1.Columns["段号"].DefaultCellStyle.SelectionForeColor = Color.Bisque;
+            this.RestoreDetailColumnVisibility();
+        }
+
+        private void RestoreDetailColumnVisibility()
+        {
+            string hidden = this.historyConfig.IniReadValue("历史记录", "详情隐藏列", "");
+            var names = new HashSet<string>((hidden ?? "").Split(new[] { '|' }, StringSplitOptions.RemoveEmptyEntries), StringComparer.Ordinal);
+            foreach (DataGridViewColumn column in this.dataGridView1.Columns)
+                column.Visible = !names.Contains(column.Name);
+        }
+
+        private void DataGridView1_ColumnHeaderMouseClick(object sender, DataGridViewCellMouseEventArgs e)
+        {
+            if (!this.isSessionView && e.Button == MouseButtons.Right && e.ColumnIndex >= 0)
+                this.detailHeaderMenu.Show(System.Windows.Forms.Cursor.Position);
+        }
+
+        private void DetailHeaderMenu_Opening(object sender, System.ComponentModel.CancelEventArgs e)
+        {
+            this.detailHeaderMenu.Items.Clear();
+            if (this.isSessionView || this.dataGridView1.Columns.Count == 0)
+            {
+                e.Cancel = true;
+                return;
+            }
+
+            foreach (DataGridViewColumn column in this.dataGridView1.Columns)
+            {
+                var item = new ToolStripMenuItem(column.HeaderText)
+                {
+                    Checked = column.Visible,
+                    CheckOnClick = false,
+                    Tag = column.Name
+                };
+                item.Click += (s, args) =>
+                {
+                    var target = this.dataGridView1.Columns.Cast<DataGridViewColumn>()
+                        .FirstOrDefault(c => c.Name == (string)((ToolStripMenuItem)s).Tag);
+                    if (target == null) return;
+                    if (target.Visible && this.dataGridView1.Columns.Cast<DataGridViewColumn>().Count(c => c.Visible) <= 1)
+                    {
+                        System.Media.SystemSounds.Beep.Play();
+                        return;
+                    }
+                    target.Visible = !target.Visible;
+                    string hidden = string.Join("|", this.dataGridView1.Columns.Cast<DataGridViewColumn>()
+                        .Where(c => !c.Visible).Select(c => c.Name));
+                    this.historyConfig.IniWriteValue("历史记录", "详情隐藏列", hidden);
+                    this.detailHeaderMenu.Close();
+                };
+                this.detailHeaderMenu.Items.Add(item);
+            }
         }
 
         private class SessionAggr
@@ -955,6 +1013,23 @@ namespace WindowsFormsApplication2.History
             }
         }
 
+        private void AddTypingDetailMenuItems()
+        {
+            var detail = new ToolStripMenuItem("逐字跟打详情") { Name = "TypingDetailToolStripMenuItem" };
+            detail.Click += (sender, args) =>
+            {
+                string scoreTime = this.gridHandler.MenuGetScoreTime();
+                if (!string.IsNullOrEmpty(scoreTime))
+                    new WrongCharRanking(Glob.ScoreHistory, scoreTime).ShowDialog(this);
+            };
+            var ranking = new ToolStripMenuItem("错字排行（日期范围）") { Name = "WrongCharRankingToolStripMenuItem" };
+            ranking.Click += (sender, args) => new WrongCharRanking(Glob.ScoreHistory).ShowDialog(this);
+            int insertAt = Math.Max(0, this.HistoryContextMenuStrip.Items.IndexOf(this.DeleteGroupToolStripMenuItem));
+            this.HistoryContextMenuStrip.Items.Insert(insertAt, new ToolStripSeparator());
+            this.HistoryContextMenuStrip.Items.Insert(insertAt + 1, detail);
+            this.HistoryContextMenuStrip.Items.Insert(insertAt + 2, ranking);
+        }
+
         #region 表格右键菜单事件
         private void HistoryContextMenuStrip_Opening(object sender, System.ComponentModel.CancelEventArgs e)
         {
@@ -968,6 +1043,10 @@ namespace WindowsFormsApplication2.History
             this.RetypeToolStripMenuItem.Enabled = isDetail;
             this.DeleteSegmentToolStripMenuItem.Enabled = isDetail;
             this.DeletePageToolStripMenuItem.Enabled = isDetail;
+            if (this.HistoryContextMenuStrip.Items["TypingDetailToolStripMenuItem"] is ToolStripMenuItem detailMenu)
+                detailMenu.Enabled = isDetail;
+            if (this.HistoryContextMenuStrip.Items["WrongCharRankingToolStripMenuItem"] is ToolStripMenuItem rankingMenu)
+                rankingMenu.Enabled = true;
             if (this.isSessionView)
             {
                 this.DeleteItemToolStripMenuItem.Text = "删除此发文记录";

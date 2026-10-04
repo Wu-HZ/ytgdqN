@@ -491,6 +491,9 @@ namespace WindowsFormsApplication2
                 if (k == 8)
                 {
                     Glob.TextBg++;
+                    // 有些输入法在候选框内删码，不会改变跟打框文本；留待下次上屏关联到目标字。
+                    this.pendingImeBackspace = true;
+                    this.pendingImeBackspaceIndex = this.textBoxEx1.SelectionStart;
                 }
                 else if (k == 13)
                 {
@@ -2070,6 +2073,9 @@ namespace WindowsFormsApplication2
                 Glob.MaxMc = 10; //峰值
                 Glob.MinSplite = 500;
                 Glob.FWords.Clear();
+                Glob.WrongCharHistory.Clear();
+                this.pendingImeBackspace = false;
+                this.pendingImeBackspaceIndex = -1;
                 Glob.TextBg = 0;//退格
                 Glob.回车 = 0;
                 Glob.选重 = 0;
@@ -2166,6 +2172,87 @@ namespace WindowsFormsApplication2
 
         private int 上次输入标记 = 1;
         private int 跟打地图步进 = 0;
+        private bool pendingImeBackspace = false;
+        private int pendingImeBackspaceIndex = -1;
+
+        private void UpdateTypingErrors(int start, int end, string typedText, string targetText)
+        {
+            start = Math.Max(0, start);
+            end = Math.Min(Math.Min(end, typedText.Length), targetText.Length);
+            if (end <= start) return;
+
+            var previouslyWrong = new HashSet<int>();
+            foreach (int index in Glob.FWords) previouslyWrong.Add(index);
+            for (int i = Glob.FWords.Count - 1; i >= 0; i--)
+            {
+                int index = (int)Glob.FWords[i];
+                if (index >= start && index < end) Glob.FWords.RemoveAt(i);
+            }
+
+            bool inWrongRun = false;
+            for (int i = start; i < end; i++)
+            {
+                bool wrong = typedText[i] != targetText[i];
+                richTextBox1.SelectionStart = i;
+                richTextBox1.SelectionLength = 1;
+                richTextBox1.SelectionBackColor = wrong ? Theme.FalseBGColor : Theme.RightBGColor;
+                if (wrong)
+                {
+                    if (!inWrongRun)
+                    {
+                        Glob.FWords.Add(i);
+                        if (!previouslyWrong.Contains(i))
+                        {
+                            Glob.WrongCharHistory.Add(new WrongCharEvent
+                            {
+                                Index = i,
+                                Character = targetText.Substring(i, 1),
+                                TypedCharacter = typedText.Substring(i, 1),
+                                BackspaceCorrection = false
+                            });
+                        }
+                    }
+                    inWrongRun = true;
+                }
+                else
+                {
+                    inWrongRun = false;
+                }
+            }
+
+            if (this.pendingImeBackspace)
+            {
+                int index = this.pendingImeBackspaceIndex >= 0
+                    ? Math.Min(this.pendingImeBackspaceIndex, targetText.Length - 1)
+                    : Math.Min(start, targetText.Length - 1);
+                if (index >= 0 && !Glob.FWords.Contains(index))
+                {
+                    Glob.WrongCharHistory.Add(new WrongCharEvent
+                    {
+                        Index = index,
+                        Character = targetText.Substring(index, 1),
+                        TypedCharacter = "",
+                        BackspaceCorrection = true
+                    });
+                }
+                this.pendingImeBackspace = false;
+                this.pendingImeBackspaceIndex = -1;
+            }
+        }
+
+        private static void AddBackspaceRunMistake(List<WrongCharEvent> mistakes, int start, int end, string targetText)
+        {
+            int from = Math.Max(0, Math.Min(start, end));
+            int to = Math.Min(targetText.Length, Math.Max(start, end));
+            if (to <= from || mistakes.Any(m => m.Index >= from && m.Index < to)) return;
+            mistakes.Add(new WrongCharEvent
+            {
+                Index = from,
+                Character = targetText.Substring(from, 1),
+                TypedCharacter = "",
+                BackspaceCorrection = true
+            });
+        }
 
         private void richTextBox2_TextChanged(object sender, EventArgs e)
         {
@@ -2327,32 +2414,8 @@ namespace WindowsFormsApplication2
                         int Glast = TextLenNow;//当前字数
                         if (Istart == Glast) //当前后面没有 字符的情况。
                         {
-                            for (int i = HisSave[0]; i < HisSave[1]; i++)
-                            {
-                                if (TextType[i] == TextAlticle[i])
-                                {
-                                    richTextBox1.SelectionStart = i;
-                                    richTextBox1.SelectionLength = 1;
-                                    richTextBox1.SelectionBackColor = Theme.RightBGColor;
-                                    if (Glob.FWords.Contains(i))//以标识来计算错误量
-                                    {
-                                        Glob.FWords.Remove(i);
-                                    }
-                                    Glob.Type_Map_Color = Theme.RightBGColor;
-                                }
-                                else
-                                {
-                                    richTextBox1.SelectionStart = i;
-                                    richTextBox1.SelectionLength = 1;
-                                    richTextBox1.SelectionBackColor = Theme.FalseBGColor;
-                                    if (!Glob.FWords.Contains(i))//以标识来计算错误量
-                                    {
-                                        Glob.FWords.Add(i);
-                                    }
-                                    Glob.Type_Map_Color = Theme.FalseBGColor;
-
-                                }
-                            }
+                            this.UpdateTypingErrors(HisSave[0], Glast, TextType, TextAlticle);
+                            Glob.Type_Map_Color = Glob.FWords.Count == 0 ? Theme.RightBGColor : Theme.FalseBGColor;
 
                             if (iP >= 2)
                             { //* 打词记录
@@ -2417,30 +2480,8 @@ namespace WindowsFormsApplication2
                         }
                         else
                         { //插入输入的情况
-                            //MessageBox.Show("当前字数：" + Glast + "\n当前光标：" + Istart);
-                            for (int i = Istart - iP; i < Glast; i++)
-                            {
-                                if (TextType[i] == TextAlticle[i])
-                                {
-                                    richTextBox1.SelectionStart = i;
-                                    richTextBox1.SelectionLength = 1;
-                                    richTextBox1.SelectionBackColor = Theme.RightBGColor;
-                                    if (Glob.FWords.Contains(i))//以标识来计算错误量
-                                    {
-                                        Glob.FWords.Remove(i);
-                                    }
-                                }
-                                else
-                                {
-                                    richTextBox1.SelectionStart = i;
-                                    richTextBox1.SelectionLength = 1;
-                                    richTextBox1.SelectionBackColor = Theme.FalseBGColor;
-                                    if (!Glob.FWords.Contains(i))//以标识来计算错误量
-                                    {
-                                        Glob.FWords.Add(i);
-                                    }
-                                }
-                            }
+                            // 插入输入时，连带错位的后续红字按一次错误处理。
+                            this.UpdateTypingErrors(Istart - iP, Glast, TextType, TextAlticle);
                         }
 
                         //测速点
@@ -2484,29 +2525,7 @@ namespace WindowsFormsApplication2
                             }
                         }
 
-                        for (int i = istart; i < HisSave[1]; i++) //从当前光标处再继续往后比较正错
-                        {
-                            if (TextType[i] == TextAlticle[i])
-                            {
-                                richTextBox1.SelectionStart = i;
-                                richTextBox1.SelectionLength = 1;
-                                richTextBox1.SelectionBackColor = Theme.RightBGColor;
-                                if (Glob.FWords.Contains(i))//以标识来计算错误量
-                                {
-                                    Glob.FWords.Remove(i);
-                                }
-                            }
-                            else
-                            {
-                                richTextBox1.SelectionStart = i;
-                                richTextBox1.SelectionLength = 1;
-                                richTextBox1.SelectionBackColor = Theme.FalseBGColor;
-                                if (!Glob.FWords.Contains(i))//以标识来计算错误量
-                                {
-                                    Glob.FWords.Add(i);
-                                }
-                            }
-                        }
+                        this.UpdateTypingErrors(istart, HisSave[1], TextType, TextAlticle);
 
                         //}
                     }
@@ -2601,14 +2620,47 @@ namespace WindowsFormsApplication2
                     //错情 与 错字
                     string RightAndFault = "", RFSplit = "|"; //分隔符
                     string fa = "";
-                    Glob.TextCz = Glob.FWords.Count;
-                    for (int i = 0; i < Glob.FWords.Count; i++)
+                    var finalWrongEvents = Glob.WrongCharHistory.ToList();
+                    int deletedRangeStart = -1;
+                    int deletedRangeEnd = -1;
+                    foreach (TypeDate reportEntry in Glob.TypeReport)
                     {
-                        int s = (int)Glob.FWords[i];
-                        fa = TextType.Substring(s, 1);
+                        if (reportEntry.Length < 0)
+                        {
+                            int from = Math.Min(reportEntry.Start, reportEntry.End);
+                            int to = Math.Max(reportEntry.Start, reportEntry.End);
+                            deletedRangeStart = deletedRangeStart < 0 ? from : Math.Min(deletedRangeStart, from);
+                            deletedRangeEnd = Math.Max(deletedRangeEnd, to);
+                        }
+                        else if (deletedRangeStart >= 0)
+                        {
+                            AddBackspaceRunMistake(finalWrongEvents, deletedRangeStart, deletedRangeEnd, TextAlticle);
+                            deletedRangeStart = deletedRangeEnd = -1;
+                        }
+                    }
+                    if (deletedRangeStart >= 0)
+                        AddBackspaceRunMistake(finalWrongEvents, deletedRangeStart, deletedRangeEnd, TextAlticle);
+
+                    foreach (int index in Glob.FWords)
+                    {
+                        if (!finalWrongEvents.Any(w => w.Index == index))
+                        {
+                            finalWrongEvents.Add(new WrongCharEvent
+                            {
+                                Index = index,
+                                Character = index >= 0 && index < TextAlticle.Length ? TextAlticle.Substring(index, 1) : "",
+                                TypedCharacter = index >= 0 && index < TextType.Length ? TextType.Substring(index, 1) : ""
+                            });
+                        }
+                    }
+                    Glob.TextCz = finalWrongEvents.Count;
+                    for (int i = 0; i < finalWrongEvents.Count; i++)
+                    {
+                        WrongCharEvent wrong = finalWrongEvents[i];
+                        fa = string.IsNullOrEmpty(wrong.TypedCharacter) ? "□" : wrong.TypedCharacter;
                         if (fa == " ") { fa = "□"; }
-                        RightAndFault += TextAlticle.Substring(s, 1) + "√ " + fa + "×";
-                        if (Glob.TextCz > 0 && i < Glob.TextCz - 1) { RightAndFault += RFSplit; }
+                        RightAndFault += wrong.Character + "√ " + fa + "×";
+                        if (i < finalWrongEvents.Count - 1) RightAndFault += RFSplit;
                     }
 
                     string Cz, Spsend; //错字和速度的输出
@@ -3022,6 +3074,9 @@ namespace WindowsFormsApplication2
                         }
                         //* 保存成绩
                         Glob.ScoreHistory.InsertScore(Glob.TextTime.ToString("s"), Glob.CurSegmentNum, Spsend, jj, mc, Glob.词库理论码长, Glob.TextHg, Math.Abs(Glob.TextBg - Glob.TextHg), Glob.回车, Glob.选重, Glob.TextCz, Glob.TextHg_, UserJz, Glob.效率, Glob.TextJs, TextLen, Glob.aTypeWords, Glob.TextDc_, UserTime, databaseSegmentId, this.lblTitle.Text, Glob.Instration, Glob.Difficulty, (int)Glob.Category, Glob.CurrentSessionId);
+                        Glob.ScoreHistory.InsertTypingDetail(
+                            Glob.TextTime.ToString("s"), Glob.TypeText, richTextBox2.Text,
+                            JsonConvert.SerializeObject(Glob.TypeReport), JsonConvert.SerializeObject(finalWrongEvents));
                         //* 非发文模式下，保存后重置会话 ID，确保下次手动打段为新会话
                         if (!NewSendText.发文状态)
                         {

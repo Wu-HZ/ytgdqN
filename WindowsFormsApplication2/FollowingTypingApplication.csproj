@@ -44,6 +44,7 @@
 
   <!-- Content files -->
   <ItemGroup>
+    <Content Include="..\updates.json" Link="updates.json" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="rain.ico" />
     <None Include="Resources\*.png" />
   </ItemGroup>

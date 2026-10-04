@@ -68,6 +68,14 @@ namespace WindowsFormsApplication2.Storage
 
             this.cmd.CommandText = "CREATE TABLE IF NOT EXISTS calc(score_time DATETIME PRIMARY KEY NOT NULL, keys TEXT, CONSTRAINT fk_score_calc FOREIGN KEY (score_time) REFERENCES score(score_time));";
             this.cmd.ExecuteNonQuery();
+
+            // 逐字报告独立于可选的高阶统计保存，确保每段结算时都能回看。
+            this.cmd.CommandText = "CREATE TABLE IF NOT EXISTS type_detail(score_time DATETIME PRIMARY KEY NOT NULL, target_text TEXT NOT NULL, typed_text TEXT NOT NULL, type_report TEXT NOT NULL, wrong_chars TEXT NOT NULL);";
+            this.cmd.ExecuteNonQuery();
+            this.cmd.CommandText = "CREATE TRIGGER IF NOT EXISTS type_detail_delete BEFORE DELETE ON score FOR EACH ROW BEGIN DELETE FROM type_detail WHERE score_time=old.score_time; END;";
+            this.cmd.ExecuteNonQuery();
+            this.cmd.CommandText = "CREATE INDEX IF NOT EXISTS type_detail_time ON type_detail(score_time);";
+            this.cmd.ExecuteNonQuery();
         }
 
         /// <summary>
@@ -101,6 +109,70 @@ namespace WindowsFormsApplication2.Storage
         {
             this.cmd.CommandText = $"INSERT INTO score VALUES('{score_time}',{segment_num},'{speed}',{keystroke},{code_len},{calc_len},{back_change},{backspace},{enter},{duplicate},{error},{back_rate},{accuracy_rate},{effciency},{keys},{count},{type_words},{words_rate},'{cost_time}',{segment_id},'{this.ConvertText(article_title)}','{version}',{difficulty},{category},'{session_id}');";
             this.cmd.ExecuteNonQuery();
+        }
+
+        public void InsertTypingDetail(string scoreTime, string targetText, string typedText, string typeReportJson, string wrongCharsJson)
+        {
+            using (var command = new SQLiteCommand("INSERT OR REPLACE INTO type_detail(score_time,target_text,typed_text,type_report,wrong_chars) VALUES(@time,@target,@typed,@report,@wrong)", this.cn))
+            {
+                command.Parameters.AddWithValue("@time", scoreTime.Replace(" ", "T"));
+                command.Parameters.AddWithValue("@target", targetText ?? "");
+                command.Parameters.AddWithValue("@typed", typedText ?? "");
+                command.Parameters.AddWithValue("@report", typeReportJson ?? "[]");
+                command.Parameters.AddWithValue("@wrong", wrongCharsJson ?? "[]");
+                command.ExecuteNonQuery();
+            }
+        }
+
+        public TypingDetailRecord GetTypingDetail(string scoreTime)
+        {
+            using (var command = new SQLiteCommand("SELECT score_time,target_text,typed_text,type_report,wrong_chars FROM type_detail WHERE score_time=@time", this.cn))
+            {
+                command.Parameters.AddWithValue("@time", (scoreTime ?? "").Replace(" ", "T"));
+                using (SQLiteDataReader reader = command.ExecuteReader())
+                {
+                    if (!reader.Read()) return null;
+                    return new TypingDetailRecord
+                    {
+                        ScoreTime = reader.GetString(0),
+                        TargetText = reader.GetString(1),
+                        TypedText = reader.GetString(2),
+                        TypeReportJson = reader.GetString(3),
+                        WrongCharsJson = reader.GetString(4)
+                    };
+                }
+            }
+        }
+
+        public List<TypingDetailRecord> GetTypingDetails(DateTime startDate, DateTime endDate)
+        {
+            if (startDate.Date > endDate.Date)
+            {
+                DateTime temp = startDate;
+                startDate = endDate;
+                endDate = temp;
+            }
+            var records = new List<TypingDetailRecord>();
+            using (var command = new SQLiteCommand("SELECT score_time,target_text,typed_text,type_report,wrong_chars FROM type_detail WHERE score_time>=@start AND score_time<@end ORDER BY score_time DESC", this.cn))
+            {
+                command.Parameters.AddWithValue("@start", startDate.ToString("yyyy-MM-dd'T'00:00:00", CultureInfo.InvariantCulture));
+                command.Parameters.AddWithValue("@end", endDate.AddDays(1).ToString("yyyy-MM-dd'T'00:00:00", CultureInfo.InvariantCulture));
+                using (SQLiteDataReader reader = command.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        records.Add(new TypingDetailRecord
+                        {
+                            ScoreTime = reader.GetString(0),
+                            TargetText = reader.GetString(1),
+                            TypedText = reader.GetString(2),
+                            TypeReportJson = reader.GetString(3),
+                            WrongCharsJson = reader.GetString(4)
+                        });
+                    }
+                }
+            }
+            return records;
         }
 
         private void MigrateSessionIds()

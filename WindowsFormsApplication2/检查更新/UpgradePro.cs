@@ -20,6 +20,7 @@ namespace WindowsFormsApplication2.检查更新
         public UpgradePro()
         {
             InitializeComponent();
+            ConfigureUpdateLogButton();
             UpgradeModel = new UpgradeModel();
             this.panel1.Paint += panel1_Paint;
             UpgradeModel.HasUpdated += UpgradeModel_HasUpdated;
@@ -52,6 +53,23 @@ namespace WindowsFormsApplication2.检查更新
             {
                 e.Graphics.DrawString("暂无更新！", font1, Brushes.Coral, 10, 155);
             }
+        }
+
+        private void ConfigureUpdateLogButton()
+        {
+            this.btnCheckUpgrade.SetBounds(11, 293, 96, 73);
+            this.btnSeeContext.SetBounds(112, 293, 96, 73);
+            var btnUpdateLog = new Button
+            {
+                Name = "btnUpdateLog",
+                Text = "更新日志",
+                Anchor = AnchorStyles.Bottom | AnchorStyles.Left,
+                Location = new Point(213, 293),
+                Size = new Size(97, 73),
+                UseVisualStyleBackColor = true
+            };
+            btnUpdateLog.Click += (sender, args) => new UpdateLogForm().ShowDialog(this);
+            this.Controls.Add(btnUpdateLog);
         }
 
         private void btnCheckUpgrade_Click(object sender, EventArgs e)
