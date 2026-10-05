@@ -24,6 +24,54 @@ namespace WindowsFormsApplication2
         {
             frm = frm1;
             InitializeComponent();
+            var presetLabel = new Label
+            {
+                Text = "快捷配色：", Location = new Point(88, 3), Size = new Size(84, 20),
+                TextAlign = ContentAlignment.MiddleRight
+            };
+            var presets = new ComboBox
+            {
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                Location = new Point(177, 1), Size = new Size(264, 23),
+                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
+            };
+            presets.Items.Add("选择配色方案（确定后保存）");
+            foreach (var preset in ThemeColorPresets.All) presets.Items.Add(preset.Name);
+            presets.SelectedIndex = 0;
+            presets.SelectedIndexChanged += (_, _) =>
+            {
+                if (presets.SelectedIndex > 0) ApplyPreset(ThemeColorPresets.All[presets.SelectedIndex - 1]);
+            };
+            Controls.Add(presetLabel);
+            Controls.Add(presets);
+            presets.BringToFront();
+        }
+
+        private void ApplyPreset(ThemeColorPreset preset)
+        {
+            // A preset switches to a solid background. Selecting it previews the shell immediately;
+            // nothing is persisted until the existing 确定 button is clicked.
+            SwitchB1.Checked = false;
+            lblBGPath.Text = "纯色";
+            lblPicShow.BackColor = preset.Background;
+            lblThemeBGShow.BackColor = preset.Background;
+            lblThemeFCShow.BackColor = preset.Foreground;
+            SecondBGLabel.BackColor = preset.SecondaryBackground;
+            SecondFCLabel.BackColor = preset.SecondaryForeground;
+            R1BackLabel.BackColor = preset.ReferenceBackground;
+            SetR1Color(preset.ReferenceForeground);
+            R2BackLabel.BackColor = preset.TypingBackground;
+            SetR2Color(preset.TypingForeground);
+            RightBGColorLabel.BackColor = preset.CorrectBackground;
+            FalseBGColorLabel.BackColor = preset.ErrorBackground;
+            BackChangeColorLabel.BackColor = preset.CorrectionMark;
+            TimeLongColorLabel.BackColor = preset.LongTimeMark;
+            Words0ColorLabel.BackColor = preset.Word0;
+            Words1ColorLabel.BackColor = preset.Word1;
+            Words2ColorLabel.BackColor = preset.Word2;
+            Words3ColorLabel.BackColor = preset.Word3;
+            TestMarkColorLabel.BackColor = preset.SpeedMark;
+            ReView();
         }
 
         private void FormTheme_Load(object sender, EventArgs e)
