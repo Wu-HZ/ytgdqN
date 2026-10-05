@@ -3213,13 +3213,15 @@ namespace WindowsFormsApplication2
                                         }
                                     }
                                 }
-                                else
-                                { // 无条件，直接发下一段
-                                    SendNextFun();
-                                }
                             }
                         }
                         #endregion
+                    }
+
+                    // 无条件自动发文不应受成绩统计门槛（用时/错字比例）影响。
+                    if (NewSendText.发文状态 && NewSendText.是否自动 && !NewSendText.AutoCondition)
+                    {
+                        SendNextFun();
                     }
                     #endregion
                 }
