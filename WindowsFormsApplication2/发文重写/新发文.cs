@@ -27,6 +27,10 @@ namespace WindowsFormsApplication2
         private readonly Form1 frm;
 
         private readonly Ini _t = new Ini("config.ini");
+        private int singleSegmentLength = 10;
+        private int articleSegmentLength = 200;
+        private int phraseSegmentLength = 25;
+        private bool changingSegmentLengthProgrammatically;
 
         #region 网络文章数据
         /// <summary>
@@ -228,6 +232,11 @@ namespace WindowsFormsApplication2
         {
             frm = frm1;
             InitializeComponent();
+            tabControl2.SelectedIndexChanged += (_, _) =>
+            {
+                if (tabControl2.SelectedIndex >= 0)
+                    lblStyle.Text = tabControl2.SelectedTab.Text;
+            };
             InitializeLegadoTab();
             FormClosed += (_, _) => frm.DiscardPreparedLegadoBook();
 
@@ -945,6 +954,13 @@ namespace WindowsFormsApplication2
         private void lbxTextList_SelectedIndexChanged(object sender, EventArgs e)
         {
             int index = (sender as ListBox).SelectedIndex;
+            if (index >= 0 && index <= 3)
+                tabControl2.SelectedIndex = (int)NewSendText.ContentTypeValue.Single;
+            else if (index == 4)
+                tabControl2.SelectedIndex = (int)NewSendText.ContentTypeValue.Phrase;
+            else if (index >= 5 && index <= 9)
+                tabControl2.SelectedIndex = (int)NewSendText.ContentTypeValue.Article;
+
             if ((sender as ListBox).Text.Length != 0)
             {
                 GetText = TyDll.GetResources.GetText("Resources.TXT." + (sender as ListBox).Text + ".txt");
@@ -1020,7 +1036,7 @@ namespace WindowsFormsApplication2
                         if (sendCount > phraseCount)
                         {
                             // 若原先填写的词数超出则调整为发送全文
-                            this.tbxSendCount.Text = phraseCount.ToString();
+                            SetSegmentLengthText(phraseCount);
                             this.tbxSendStart.Text = "0";
                         }
 
@@ -1054,7 +1070,7 @@ namespace WindowsFormsApplication2
                     if (sendCount > tickTextLen)
                     {
                         // 若原先填写的字数超出则调整为发送全文
-                        this.tbxSendCount.Text = tickTextLen.ToString();
+                        SetSegmentLengthText(tickTextLen);
                         this.tbxSendStart.Text = "0";
                     }
 
@@ -1158,7 +1174,7 @@ namespace WindowsFormsApplication2
         /// <param name="e"></param>
         private void tabControl2_Selecting(object sender, TabControlCancelEventArgs e)
         {
-            int nowIndex = (sender as TabControl).SelectedIndex;
+            int nowIndex = e.TabPageIndex;
             if (nowIndex == (int)NewSendText.ContentTypeValue.Phrase && this.lblStyle.Text != "词组")
             { //* 切换到词组
                 this.label2.Text = "总词数";
@@ -1198,6 +1214,63 @@ namespace WindowsFormsApplication2
             {
                 (sender as Label).ForeColor = Color.Black;
             }
+            ApplySegmentLengthForStyle(getit);
+        }
+
+        private void ApplySegmentLengthForStyle(string style)
+        {
+            int segmentLength = style switch
+            {
+                "单字" => singleSegmentLength,
+                "文章" or "电子书" => articleSegmentLength,
+                "词组" => phraseSegmentLength,
+                _ => 0
+            };
+            if (segmentLength > 0) SetSegmentLengthText(segmentLength);
+        }
+
+        private void SetSegmentLengthText(int segmentLength)
+        {
+            if (segmentLength < 1 || tbxSendCount.Text == segmentLength.ToString()) return;
+            bool wasChanging = changingSegmentLengthProgrammatically;
+            changingSegmentLengthProgrammatically = true;
+            try { tbxSendCount.Text = segmentLength.ToString(); }
+            finally { changingSegmentLengthProgrammatically = wasChanging; }
+        }
+
+        private void RememberSegmentLengthFromEdit()
+        {
+            if (changingSegmentLengthProgrammatically || !int.TryParse(tbxSendCount.Text, out int segmentLength) || segmentLength < 1)
+                return;
+            switch (lblStyle.Text)
+            {
+                case "单字": singleSegmentLength = segmentLength; break;
+                case "文章":
+                case "电子书": articleSegmentLength = segmentLength; break;
+                case "词组": phraseSegmentLength = segmentLength; break;
+            }
+        }
+
+        private int ReadSavedSegmentLength(string key)
+        {
+            return int.TryParse(_t.IniReadValue("发文面板配置", key, ""), out int value) && value > 0
+                ? value : 0;
+        }
+
+        private void LoadSegmentLengths()
+        {
+            bool hasLegacyCount = int.TryParse(_t.IniReadValue("发文面板配置", "字数", ""), out int legacyCount) && legacyCount > 0;
+            bool hasLegacyType = int.TryParse(_t.IniReadValue("发文面板配置", "内容类型", ""), out int legacyType);
+            bool hasSeparateLengthProfiles = _t.IniReadValue("发文面板配置", "分类型段长版本", "") == "2";
+            int savedSingle = hasSeparateLengthProfiles ? ReadSavedSegmentLength("单字每段字数") : 0;
+            int savedArticle = hasSeparateLengthProfiles ? ReadSavedSegmentLength("文章每段字数") : 0;
+            int savedPhrase = hasSeparateLengthProfiles ? ReadSavedSegmentLength("词组每段数量") : 0;
+            singleSegmentLength = savedSingle > 0 ? savedSingle :
+                hasLegacyCount && hasLegacyType && legacyType == (int)NewSendText.ContentTypeValue.Single ? legacyCount : 10;
+            articleSegmentLength = savedArticle > 0 ? savedArticle :
+                hasLegacyCount && hasLegacyType && legacyType == (int)NewSendText.ContentTypeValue.Article ? legacyCount : 200;
+            phraseSegmentLength = savedPhrase > 0 ? savedPhrase :
+                hasLegacyCount && hasLegacyType && legacyType == (int)NewSendText.ContentTypeValue.Phrase ? legacyCount : 25;
         }
         #endregion
 
@@ -1705,6 +1778,7 @@ namespace WindowsFormsApplication2
         private void tbxSendCount_TextChanged(object sender, EventArgs e)
         {
             textChangeHandler();
+            RememberSegmentLengthFromEdit();
 
             if (this.checkBox1.Checked) 
             {
@@ -2473,7 +2547,7 @@ namespace WindowsFormsApplication2
 
                     NewSendText.字数 = (int)sd["count"];
                     NewSendText.标记 = (int)sd["mark"];
-                    tbxSendCount.Text = NewSendText.字数.ToString();
+                    SetSegmentLengthText(NewSendText.字数);
                     tbxSendStart.Text = NewSendText.标记.ToString();
                     tbxSendCount.MaxLength = lblTextCount.Text.Length;
                     tbxSendStart.MaxLength = lblTextCount.Text.Length;
@@ -2899,10 +2973,13 @@ namespace WindowsFormsApplication2
             // 乱序不重复
             this.cbx乱序全段不重复.Checked = bool.Parse(_t.IniReadValue("发文面板配置", "乱序全段不重复", "True"));
 
+            LoadSegmentLengths();
             // 起始标记
             this.tbxSendStart.Text = _t.IniReadValue("发文面板配置", "起始标记", "0");
             // 字数
-            this.tbxSendCount.Text = _t.IniReadValue("发文面板配置", "字数", "25");
+            string savedSegmentLength = _t.IniReadValue("发文面板配置", "字数", "25");
+            SetSegmentLengthText(int.TryParse(savedSegmentLength, out int initialLength) && initialLength > 0
+                ? initialLength : 25);
             // 起始段号
             this.tbxQisduan.Text = _t.IniReadValue("发文面板配置", "起始段号", "1");
 
@@ -2921,6 +2998,7 @@ namespace WindowsFormsApplication2
 
             // 内容类型
             this.tabControl2.SelectedIndex = int.Parse(_t.IniReadValue("发文面板配置", "内容类型", "0"));
+            ApplySegmentLengthForStyle(this.tabControl2.TabPages[this.tabControl2.SelectedIndex].Text);
             bool sl = bool.Parse(_t.IniReadValue("发文面板配置", "单字乱序", "True"));
             this.rbnOutOrder.Checked = sl;
             this.rbninOrder.Checked = !sl;
@@ -2950,6 +3028,10 @@ namespace WindowsFormsApplication2
             _t.IniWriteValue("发文面板配置", "起始标记", this.tbxSendStart.Text);
             // 字数
             _t.IniWriteValue("发文面板配置", "字数", this.tbxSendCount.Text);
+            _t.IniWriteValue("发文面板配置", "单字每段字数", singleSegmentLength.ToString());
+            _t.IniWriteValue("发文面板配置", "文章每段字数", articleSegmentLength.ToString());
+            _t.IniWriteValue("发文面板配置", "词组每段数量", phraseSegmentLength.ToString());
+            _t.IniWriteValue("发文面板配置", "分类型段长版本", "2");
             // 起始段号
             _t.IniWriteValue("发文面板配置", "起始段号", this.tbxQisduan.Text);
 
