@@ -218,6 +218,7 @@ namespace WindowsFormsApplication2
         private Button legadoConnectButton;
         private Button legadoRedownloadButton;
         private bool legadoPrepared;
+        private bool legadoPreparedEpub;
         private bool legadoHttpWarningConfirmed;
         private bool updatingLegadoBookList;
         private bool legadoPreparing;
@@ -421,8 +422,8 @@ namespace WindowsFormsApplication2
                 foreach (var book in books)
                 {
                     var item = new ListViewItem(book.FileName);
-                    item.SubItems.Add(IsPreviewOnlyBook(book.FileName)
-                        ? book.IsCached ? "仅预览 · 已缓存" : "仅预览 · 首次下载"
+                    item.SubItems.Add(IsEpubBook(book.FileName)
+                        ? book.IsCached ? "EPUB 可跟打 · 已缓存" : "EPUB 可跟打 · 首次下载"
                         : book.IsCached ? "已缓存" : "首次使用时下载");
                     item.Tag = book;
                     legadoBookList.Items.Add(item);
@@ -444,7 +445,7 @@ namespace WindowsFormsApplication2
                     InvalidatePreparedLegadoBook();
                 legadoStatus.ForeColor = SystemColors.ControlText;
                 string requestMode = $"Depth:1 共 {scan.RequestCount} 次请求";
-                legadoStatus.Text = $"已扫描到 {books.Count} 本 TXT/EPUB（{scanTimer.Elapsed.TotalSeconds:0.0} 秒，{requestMode}）；EPUB 仅预览，不同步进度。";
+                legadoStatus.Text = $"已扫描到 {books.Count} 本 TXT/EPUB（{scanTimer.Elapsed.TotalSeconds:0.0} 秒，{requestMode}）；EPUB 可预览和跟打；云端进度只读，不写回。";
                 toolTip1.SetToolTip(legadoStatus, legadoStatus.Text);
             }
             catch (Exception ex)
@@ -477,7 +478,7 @@ namespace WindowsFormsApplication2
             return Convert.ToHexString(id);
         }
 
-        private static bool IsPreviewOnlyBook(string fileName) =>
+        private static bool IsEpubBook(string fileName) =>
             fileName.EndsWith(".epub", StringComparison.OrdinalIgnoreCase);
 
         private void UpdateLegadoRuleSelection()
@@ -487,7 +488,7 @@ namespace WindowsFormsApplication2
             {
                 bool selected = legadoBookList.SelectedItems.Count > 0;
                 legadoTocRule.Enabled = selected && !updatingLegadoBookList && !legadoPreparing &&
-                    !IsPreviewOnlyBook((legadoBookList.SelectedItems[0].Tag as LegadoBookListItem).FileName);
+                    !IsEpubBook((legadoBookList.SelectedItems[0].Tag as LegadoBookListItem).FileName);
                 string saved = selected ? _t.IniReadValue("LegadoTocRules", GetLegadoRuleKey(), "") : "";
                 int index = legadoTocRule.Items.IndexOf(saved);
                 legadoTocRule.SelectedIndex = index > 0 ? index : 0;
@@ -516,10 +517,11 @@ namespace WindowsFormsApplication2
         {
             bool hasSelection = legadoBookList.SelectedItems.Count > 0;
             legadoConnectButton.Enabled = hasSelection;
-            legadoConnectButton.Text = hasSelection &&
-                (IsPreviewOnlyBook((legadoBookList.SelectedItems[0].Tag as LegadoBookListItem).FileName) ||
-                 legadoTocRule.Text == "默认分章规则")
-                ? "预览书籍" : "读取进度";
+            bool selectedEpub = hasSelection &&
+                IsEpubBook((legadoBookList.SelectedItems[0].Tag as LegadoBookListItem).FileName);
+            legadoConnectButton.Text = selectedEpub
+                ? "预览/跟打"
+                : hasSelection && legadoTocRule.Text == "默认分章规则" ? "预览书籍" : "读取进度";
             legadoRedownloadButton.Enabled = hasSelection;
         }
 
@@ -574,6 +576,7 @@ namespace WindowsFormsApplication2
                     legadoAccountValue, legadoPasswordValue, selectedBook.FileName, forceDownload,
                     legadoUseSystemProxyValue, legadoTocRule.SelectedIndex == 0 ? null : legadoTocRule.Text);
                 legadoPrepared = true;
+                legadoPreparedEpub = false;
                 legadoSelectedFile = selectedBook.FileName;
                 _t.IniWriteValue("LegadoWebDav", "BookFile", legadoSelectedFile);
                 item.SubItems[1].Text = "已缓存";
@@ -681,12 +684,13 @@ namespace WindowsFormsApplication2
         private async Task PreviewLegadoEpubAsync(string fileName, bool forceDownload)
         {
             legadoPrepared = false;
+            legadoPreparedEpub = false;
             frm.DiscardPreparedLegadoBook();
             btnGoSend.Enabled = false;
             if (!ConfirmLegadoHttpUse()) return;
             legadoPreparing = true;
             SetLegadoControlsEnabled(false);
-            legadoStatus.Text = "正在从本地缓存或 WebDAV 读取 EPUB 目录…";
+            legadoStatus.Text = "正在从本地缓存或 WebDAV 读取 EPUB 目录和云端进度…";
             try
             {
                 var book = await frm.PreviewLegadoEpubAsync(legadoUrlValue, legadoDirectoryValue,
@@ -694,7 +698,7 @@ namespace WindowsFormsApplication2
                 if (IsDisposed || Disposing) return;
                 using var preview = new Form
                 {
-                    Text = "EPUB 目录/正文预览（暂不支持进度同步）",
+                    Text = "EPUB 目录/正文预览（可跟打；云端进度不写回）",
                     StartPosition = FormStartPosition.CenterParent,
                     Size = new Size(620, 530)
                 };
@@ -733,12 +737,71 @@ namespace WindowsFormsApplication2
                 };
                 split.Panel1.Controls.Add(list);
                 split.Panel2.Controls.Add(text);
-                preview.Controls.Add(split);
                 legadoStatus.ForeColor = SystemColors.ControlText;
                 legadoStatus.Text = book.Progress == null
-                    ? $"EPUB 已识别 {book.Chapters.Count} 项；{book.ProgressWarning} 禁止跟打同步。"
-                    : $"EPUB 已识别 {book.Chapters.Count} 项；云端第 {book.Progress.ChapterIndex} 项、章内 {book.Progress.ChapterPos}（只读，不可按预览字数定位）。";
-                preview.ShowDialog(this);
+                    ? $"EPUB 已识别 {book.Chapters.Count} 项；{book.ProgressWarning}可选章节跟打，不会写回进度。"
+                    : $"EPUB 已识别 {book.Chapters.Count} 项；云端进度只读：第 {book.Progress.ChapterIndex} 项、章内 {book.Progress.ChapterPos}。可按此位置估算跟打起点，不会写回进度。";
+                var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2 };
+                layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+                layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 48));
+                var actions = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, Margin = new Padding(6) };
+                actions.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+                actions.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+                var hint = new Label
+                {
+                    Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft,
+                    Text = "跟打起点按预览正文估算，可能与 Legado 略有偏差；EPUB 永不写回云端进度。"
+                };
+                var startTyping = new Button { Text = "跟打所选章节", AutoSize = true, Enabled = false };
+                actions.Controls.Add(hint, 0, 0);
+                actions.Controls.Add(startTyping, 1, 0);
+                layout.Controls.Add(split, 0, 0);
+                layout.Controls.Add(actions, 0, 1);
+                preview.Controls.Add(layout);
+                list.SelectedIndexChanged += (_, _) =>
+                    startTyping.Enabled = list.SelectedIndices.Count > 0 &&
+                        !book.Chapters[list.SelectedIndices[0]].Href.StartsWith("epub-toc://", StringComparison.Ordinal);
+                startTyping.Click += async (_, _) =>
+                {
+                    if (list.SelectedIndices.Count == 0) return;
+                    int chapterIndex = list.SelectedIndices[0];
+                    startTyping.Enabled = false;
+                    try
+                    {
+                        legadoStatus.Text = "正在载入所选章节及后续 EPUB 正文…";
+                        var chapterTexts = await Task.Run(() =>
+                            LegadoEpubToc.ReadChapterTexts(book.Content, book.Chapters, chapterIndex));
+                        var typingBook = LegadoTxtBook.FromEpubChapters(book.Chapters, chapterTexts);
+                        if (string.IsNullOrWhiteSpace(chapterTexts[chapterIndex]))
+                            throw new InvalidDataException("所选目录项没有可跟打正文，请选择实际章节。");
+                        int chapterPos = book.Progress?.ChapterIndex == chapterIndex
+                            ? book.Progress.ChapterPos : 0;
+                        string title = LegadoEpubToc.ReadBookTitle(book.Content) ??
+                            Path.GetFileNameWithoutExtension(fileName);
+                        frm.PrepareLegadoEpubTypingBook(typingBook, book.Progress, title,
+                            fileName, chapterIndex, chapterPos);
+                        legadoPrepared = true;
+                        legadoPreparedEpub = true;
+                        legadoSelectedFile = fileName;
+                        legadoStatus.Text = book.Progress?.ChapterIndex == chapterIndex
+                            ? $"EPUB 正文已载入；将按云端第 {chapterIndex} 项位置估算起点。跟打期间不会上传或写回进度；点击下方“开始电子书跟打”启动。"
+                            : $"EPUB 正文已载入；从所选章节开头跟打。跟打期间不会上传或写回进度；点击下方“开始电子书跟打”启动。";
+                        btnGoSend.Enabled = true;
+                        preview.DialogResult = DialogResult.OK;
+                    }
+                    catch (Exception ex)
+                    {
+                        legadoStatus.ForeColor = Color.DarkRed;
+                        legadoStatus.Text = "EPUB 正文载入失败：" + ex.Message;
+                        startTyping.Enabled = list.SelectedIndices.Count > 0 &&
+                            !book.Chapters[list.SelectedIndices[0]].Href.StartsWith("epub-toc://", StringComparison.Ordinal);
+                    }
+                };
+                if (preview.ShowDialog(this) == DialogResult.OK && legadoPreparedEpub)
+                {
+                    legadoStatus.ForeColor = SystemColors.ControlText;
+                    legadoConnectButton.Enabled = false;
+                }
             }
             catch (Exception ex)
             {
@@ -761,7 +824,7 @@ namespace WindowsFormsApplication2
             legadoRefreshButton.Enabled = enabled;
             legadoBookList.Enabled = enabled;
             legadoTocRule.Enabled = enabled && legadoBookList.SelectedItems.Count > 0 &&
-                !IsPreviewOnlyBook((legadoBookList.SelectedItems[0].Tag as LegadoBookListItem).FileName);
+                !IsEpubBook((legadoBookList.SelectedItems[0].Tag as LegadoBookListItem).FileName);
             UpdateLegadoSelectionControls();
             if (!enabled)
             {
@@ -774,6 +837,7 @@ namespace WindowsFormsApplication2
         {
             if (!legadoPrepared) return;
             legadoPrepared = false;
+            legadoPreparedEpub = false;
             btnGoSend.Enabled = false;
             frm.DiscardPreparedLegadoBook();
             legadoStatus.ForeColor = SystemColors.ControlText;
@@ -2654,13 +2718,18 @@ namespace WindowsFormsApplication2
                     MessageBox.Show(this, "请检查每段字数设置。", "Legado 电子书");
                     return;
                 }
-                if (!frm.StartPreparedLegadoBook(segmentLength))
+                bool started = legadoPreparedEpub
+                    ? frm.StartPreparedLegadoEpubBook(segmentLength)
+                    : frm.StartPreparedLegadoBook(segmentLength);
+                if (!started)
                 {
-                    MessageBox.Show(this, "无法启动电子书跟打，请重新连接并读取进度。", "Legado 电子书");
+                    MessageBox.Show(this, "无法启动电子书跟打，请重新载入正文并检查所选章节。", "Legado 电子书");
                     legadoPrepared = false;
+                    legadoPreparedEpub = false;
                     return;
                 }
                 legadoPrepared = false;
+                legadoPreparedEpub = false;
                 WriteTempConfig();
                 frm.发文状态ToolStripMenuItem.PerformClick();
                 Close();

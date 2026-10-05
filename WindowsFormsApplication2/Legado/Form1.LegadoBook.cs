@@ -22,6 +22,8 @@ namespace WindowsFormsApplication2
         private bool bookPendingCompleted;
         private int bookSession;
         private int bookSegmentLength = 200;
+        private bool bookProgressWriteBackEnabled;
+        private bool bookResumeEnabled;
         private string bookFileName;
         private string bookRuleName;
         private string bookUrl;
@@ -32,6 +34,9 @@ namespace WindowsFormsApplication2
         private string preparedUrl;
         private string preparedDirectory;
         private string preparedAccount;
+        private bool preparedEpub;
+        private int preparedEpubChapterIndex;
+        private int preparedEpubChapterPos;
         private readonly Dictionary<LegadoWebDavClient, int> pendingBookUploads = new Dictionary<LegadoWebDavClient, int>();
         private readonly HashSet<LegadoWebDavClient> retiredBookClients = new HashSet<LegadoWebDavClient>();
         private LegadoWebDavClient preparedDav;
@@ -54,7 +59,7 @@ namespace WindowsFormsApplication2
             string url, string dir, string account, string password, string fileName, bool useSystemProxy, bool forceDownload)
         {
             if (!fileName.EndsWith(".epub", StringComparison.OrdinalIgnoreCase))
-                throw new ArgumentException("只能预览 EPUB 的目录。", nameof(fileName));
+                throw new ArgumentException("只能加载 EPUB 目录与云端进度。", nameof(fileName));
             using var dav = new LegadoWebDavClient(url, dir, account, password, useSystemProxy: useSystemProxy);
             var book = await bookCache.GetOrDownloadAsync(dav, fileName, forceDownload);
             var chapters = await Task.Run(() => LegadoEpubToc.Parse(book.Content));
@@ -69,7 +74,7 @@ namespace WindowsFormsApplication2
             }
             catch (Exception ex)
             {
-                return (chapters, book.Content, null, "云端进度读取失败（仅保留目录预览）：" + ex.Message);
+                return (chapters, book.Content, null, "云端进度读取失败；可手动选章从开头跟打：" + ex.Message);
             }
         }
 
@@ -133,6 +138,8 @@ namespace WindowsFormsApplication2
             bookChapterIndex = bookIdentity.ChapterIndex;
             bookCompletedPosition = bookIdentity.ChapterPos;
             bookSegmentLength = segmentLength;
+            bookProgressWriteBackEnabled = true;
+            bookResumeEnabled = true;
             bookFileName = preparedFileName;
             bookRuleName = preparedRuleName;
             bookUrl = preparedUrl;
@@ -144,6 +151,49 @@ namespace WindowsFormsApplication2
             return NewSendText.发文状态;
         }
 
+        internal void PrepareLegadoEpubTypingBook(LegadoTxtBook book, LegadoProgress progress,
+            string title, string fileName, int chapterIndex, int chapterPos)
+        {
+            if (chapterIndex < 0 || chapterIndex >= book.Chapters.Count)
+                throw new ArgumentOutOfRangeException(nameof(chapterIndex));
+            DiscardPreparedLegadoBook();
+            preparedBook = book;
+            preparedProgress = progress ?? new LegadoProgress
+            {
+                Name = title, Author = "", ChapterIndex = chapterIndex,
+                ChapterPos = chapterPos, ChapterTitle = book.Chapters[chapterIndex].Title
+            };
+            preparedFileName = fileName;
+            preparedEpub = true;
+            preparedEpubChapterIndex = chapterIndex;
+            preparedEpubChapterPos = chapterPos;
+        }
+
+        internal bool StartPreparedLegadoEpubBook(int segmentLength)
+        {
+            if (!preparedEpub || preparedBook == null || preparedProgress == null || segmentLength < 1)
+                return false;
+            StopSendFun();
+            bookText = preparedBook;
+            preparedBook = null;
+            bookIdentity = preparedProgress;
+            preparedProgress = null;
+            bookChapterIndex = preparedEpubChapterIndex;
+            bookCompletedPosition = bookIdentity.ChapterPos;
+            bookSegmentLength = segmentLength;
+            bookProgressWriteBackEnabled = false;
+            bookResumeEnabled = false;
+            bookFileName = preparedFileName;
+            bookRuleName = null;
+            bookDav = null;
+            try { File.Delete(GetLegadoResumePath()); }
+            catch (Exception ex) { ShowFlowText("无法清除 TXT 续打记录：" + ex.Message); }
+            ClearHistoryGrid();
+            BeginBookChapter(bookChapterIndex, preparedEpubChapterPos);
+            preparedEpub = false;
+            return NewSendText.发文状态;
+        }
+
         internal void DiscardPreparedLegadoBook()
         {
             preparedDav?.Dispose();
@@ -151,6 +201,7 @@ namespace WindowsFormsApplication2
             preparedBook = null;
             preparedProgress = null;
             preparedFileName = null;
+            preparedEpub = false;
         }
 
         private string GetLegadoResumePath() => Path.Combine(Application.StartupPath, "legado-send-session.json");
@@ -285,6 +336,7 @@ namespace WindowsFormsApplication2
                 return;
             }
             bookCompletedPosition = bookPendingEnd;
+            if (!bookProgressWriteBackEnabled) return;
             var chapter = bookText.Chapters[bookChapterIndex];
             var snapshot = new LegadoProgress
             {
@@ -337,6 +389,8 @@ namespace WindowsFormsApplication2
                 else bookDav.Dispose();
             }
             bookDav = null;
+            bookProgressWriteBackEnabled = false;
+            bookResumeEnabled = false;
             bookText = null;
             bookIdentity = null;
             bookPendingText = null;

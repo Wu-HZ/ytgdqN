@@ -8,8 +8,8 @@ using System.Xml.Linq;
 
 namespace WindowsFormsApplication2.Legado
 {
-    // Read-only preview: Legado's EPUB chapter indexes and durChapterPos depend on its
-    // own EPUB/HTML renderer. Never use this TOC as permission to write progress.
+    // EPUB text can be used for local typing, but its cloud durChapterPos is only an estimate
+    // against this preview text. The EPUB path must never write progress back to WebDAV.
     internal static class LegadoEpubToc
     {
         internal sealed record Entry(string Title, string Href, bool IsVolume);
@@ -18,10 +18,35 @@ namespace WindowsFormsApplication2.Legado
         {
             using var zip = new ZipArchive(new MemoryStream(bytes), ZipArchiveMode.Read);
             if (href.StartsWith("epub-toc://", StringComparison.Ordinal))
-                return "分卷目录项没有独立正文；不代表可同步的章节位置。";
-            string path = href.Split('#')[0];
-            if (string.IsNullOrEmpty(path) || path.Contains("..") || path.Contains('\\'))
-                throw new InvalidDataException("EPUB 章节地址不可读取。");
+                return "分卷目录项没有独立正文；不能作为跟打章节。";
+            return ReadChapterText(zip, ReadSpine(zip), href, nextHref);
+        }
+
+        internal static IReadOnlyList<string> ReadChapterTexts(byte[] bytes,
+            IReadOnlyList<Entry> chapters, int startIndex)
+        {
+            if (startIndex < 0 || startIndex >= chapters.Count)
+                throw new ArgumentOutOfRangeException(nameof(startIndex));
+            using var zip = new ZipArchive(new MemoryStream(bytes), ZipArchiveMode.Read);
+            var spine = ReadSpine(zip);
+            var texts = Enumerable.Repeat(string.Empty, chapters.Count).ToArray();
+            long totalLength = 0;
+            for (int i = startIndex; i < chapters.Count; i++)
+            {
+                string href = chapters[i].Href;
+                if (href.StartsWith("epub-toc://", StringComparison.Ordinal)) continue;
+                string nextHref = chapters.Skip(i + 1)
+                    .FirstOrDefault(chapter => !chapter.Href.StartsWith("epub-toc://", StringComparison.Ordinal))?.Href;
+                texts[i] = ReadChapterText(zip, spine, href, nextHref);
+                totalLength += texts[i].Length;
+                if (totalLength > 32_000_000)
+                    throw new InvalidDataException("所选章节之后的 EPUB 正文过大，无法安全载入跟打。");
+            }
+            return texts;
+        }
+
+        private static List<string> ReadSpine(ZipArchive zip)
+        {
             var container = ReadXml(zip, "META-INF/container.xml");
             string opfPath = container.Descendants().FirstOrDefault(x => x.Name.LocalName == "rootfile")
                 ?.Attribute("full-path")?.Value ?? throw new InvalidDataException("EPUB 缺少 OPF 根文件。");
@@ -29,7 +54,7 @@ namespace WindowsFormsApplication2.Legado
             var opf = ReadXml(zip, opfPath);
             var resources = opf.Descendants().Where(x => x.Name.LocalName == "item")
                 .ToDictionary(x => x.Attribute("id")?.Value ?? "", x => x);
-            var spine = opf.Descendants().Where(x => x.Name.LocalName == "itemref")
+            return opf.Descendants().Where(x => x.Name.LocalName == "itemref")
                 .Select(x => x.Attribute("idref")?.Value)
                 .Where(id => id != null && resources.ContainsKey(id))
                 .Select(id => resources[id])
@@ -37,6 +62,13 @@ namespace WindowsFormsApplication2.Legado
                 .Select(x => Resolve(opfPath, x.Attribute("href")?.Value ?? ""))
                 .Where(x => zip.GetEntry(x) != null)
                 .Distinct(StringComparer.Ordinal).ToList();
+        }
+
+        private static string ReadChapterText(ZipArchive zip, List<string> spine, string href, string nextHref)
+        {
+            string path = href.Split('#')[0];
+            if (string.IsNullOrEmpty(path) || path.Contains("..") || path.Contains('\\'))
+                throw new InvalidDataException("EPUB 章节地址不可读取。");
             int startIndex = spine.IndexOf(path);
             string nextPath = nextHref?.Split('#')[0];
             int endIndex = nextPath == null ? spine.Count : spine.IndexOf(nextPath);

@@ -92,7 +92,7 @@ using (var epubClient = new LegadoWebDavClient("https://example.test/dav", "Lega
         "EPUB 目录索引越界时仍不得读取为可靠进度");
 }
 Check(LegadoEpubToc.ReadChapterText(epubBytes, epubToc[2].Href) == "第一章\n甲乙",
-    "EPUB 正文只读预览去除脚本，不参与进度同步");
+    "EPUB 正文抽取去除脚本，供本地跟打使用");
 try { LegadoEpubToc.ReadChapterText(epubBytes, epubToc[2].Href, epubToc[3].Href);
     throw new Exception("缺失后续 spine 资源被误认为完整章节"); }
 catch (InvalidDataException) { }
@@ -131,6 +131,14 @@ using (var stream = new MemoryStream())
     Check(pages.Count == 2 &&
         LegadoEpubToc.ReadChapterText(stream.ToArray(), pages[0].Href, pages[1].Href) ==
         "章一\n正文A\n正文B\n过渡页", "EPUB 跨 spine 资源与下一章起始锚点前内容");
+    var pageTexts = LegadoEpubToc.ReadChapterTexts(stream.ToArray(), pages, 0);
+    var epubTypingBook = LegadoTxtBook.FromEpubChapters(pages, pageTexts);
+    var selectedTexts = LegadoEpubToc.ReadChapterTexts(stream.ToArray(), pages, 1);
+    Check(pageTexts.SequenceEqual(new[] { "章一\n正文A\n正文B\n过渡页", "章二\n正文C" }) &&
+        selectedTexts[0] == "" && selectedTexts[1] == pageTexts[1] &&
+        epubTypingBook.Chapters[1].TypingText == "章二正文C" &&
+        epubTypingBook.Chapters[1].OriginalPosition(2) == 3,
+        "EPUB 按目录索引预载所选章及后续正文，并保留估算位置映射");
 }
 
 using (var stream = new MemoryStream())

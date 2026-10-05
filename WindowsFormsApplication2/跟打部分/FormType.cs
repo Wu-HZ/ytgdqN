@@ -4476,7 +4476,7 @@ namespace WindowsFormsApplication2
             // 电子书进度以云端为准，普通发文快照不含书籍/章节身份，不能用于恢复同步。
             if (bookText == null) SaveSendSessionSnapshot();
             else DeleteSendSessionSnapshot();
-            ResetBookMode(preserveResume: bookText != null && NewSendText.发文状态);
+            ResetBookMode(preserveResume: bookResumeEnabled && NewSendText.发文状态);
 
             int tX = this.Location.X;//横坐标
             int tY = this.Location.Y;

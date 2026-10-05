@@ -210,8 +210,8 @@ namespace WindowsFormsApplication2.Legado
             return progress;
         }
 
-        // EPUB is read-only until its formatted durChapterPos coordinates have been verified.
-        // Do not set progressFile/lastProgress: they authorize TXT conditional writes.
+        // EPUB's cloud progress is read-only; keep progressFile/lastProgress unset so this
+        // client cannot authorize TXT conditional writes during EPUB follow-typing.
         public async Task<LegadoProgress> ReadEpubProgressAsync(string name, IReadOnlyList<LegadoEpubToc.Entry> chapters)
         {
             var candidates = await ListProgressCandidatesAsync(name);

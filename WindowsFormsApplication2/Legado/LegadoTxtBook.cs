@@ -153,6 +153,21 @@ namespace WindowsFormsApplication2.Legado
             RuleName = ruleName;
         }
 
+        public static LegadoTxtBook FromEpubChapters(
+            IReadOnlyList<LegadoEpubToc.Entry> entries, IReadOnlyList<string> contents)
+        {
+            if (entries.Count != contents.Count)
+                throw new ArgumentException("EPUB 目录与章节正文数量不一致。");
+            var chapters = entries.Select((entry, index) => new Chapter
+            {
+                Index = index,
+                Title = entry.Title,
+                Content = contents[index] ?? string.Empty
+            }).ToList();
+            foreach (var chapter in chapters) chapter.PrepareForTyping();
+            return new LegadoTxtBook(chapters, "EPUB", "EPUB");
+        }
+
         public static LegadoTxtBook Parse(byte[] bytes, string ruleName = null)
         {
             var (text, charset) = Decode(bytes);
