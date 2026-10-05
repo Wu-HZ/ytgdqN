@@ -183,6 +183,10 @@ namespace WindowsFormsApplication2
         public Form1()
         {
             InitializeComponent();
+            // 输入分析缓冲控件不能放在会被“曲线”模式折叠的详细面板中；
+            // 保持其原有 TextChanged 事件路径，同时避免折叠后消息延迟影响自动跳段。
+            this.splitContainer3.Panel1.Controls.Add(this.richTextBox2);
+            this.richTextBox2.Bounds = new Rectangle(-200, -200, 1, 1);
             this.picBar.Paint += PicBar_Paint;
             this.splitContainer1.Paint += SplitContainer1_Paint;
             ConfigureRealtimeScoreGrid();
@@ -292,12 +296,7 @@ namespace WindowsFormsApplication2
                 t1.Start();
             }
 
-            //? 由于不可见控件的消息会被延迟处理，这会导致在初始无布局计算时，richTextBox2 上的文本变更消息无法触发
-            if (!this.toolStripButton4.Checked)
-            {
-                this.toolStripButton4.PerformClick();
-                this.toolStripButton4.PerformClick();
-            }
+            // 文本分析仍由 richTextBox2 的 TextChanged 处理；切换视图不再通过模拟点击进行初始化。
 
             // 恢复上次退出时的窗口状态
             bool isMaximized = !bool.TryParse(IniRead("窗口位置", "最大化", "True"), out bool maxVal) || maxVal;
@@ -306,7 +305,10 @@ namespace WindowsFormsApplication2
                 this.WindowState = FormWindowState.Maximized;
             }
 
-            this.BeginInvoke(new MethodInvoker(RestoreSendSessionSnapshot));
+            this.BeginInvoke(new MethodInvoker(async () =>
+            {
+                if (!await RestoreLegadoBookOnStartupAsync()) RestoreSendSessionSnapshot();
+            }));
         }
 
 
@@ -962,10 +964,11 @@ namespace WindowsFormsApplication2
             lblMatchCount.Text = Validation.Validat(Validation.Validat(richTextBox1.Text));
             labelHaveTyping.Text = Glob.todayTyping + "/" + 字数格式化(Glob.TextLenAll) + "/" + Glob.TextRecDays + "天";
 
-            //曲线
-            Glob.isShowSpline = bool.Parse(IniRead("拖动条", "曲线", "False"));
-            this.splitContainer4.Panel1Collapsed = Glob.isShowSpline;
-            this.tbnSpline.Checked = !Glob.isShowSpline;
+            // 旧配置中曲线与详细可同时打开；升级后优先保留详细视图。
+            bool showCurve = !bool.Parse(IniRead("拖动条", "曲线", "False"));
+            if (showCurve && this.toolStripButton4.Checked)
+                showCurve = false;
+            this.SetHistoryViewMode(showCurve);
             //停止用时
             int stopTime = int.Parse(IniRead("控制", "停止", "1"));
             if (stopTime < 1 || stopTime > 10)
@@ -1421,6 +1424,7 @@ namespace WindowsFormsApplication2
         /// <param name="textAll">跟打区的文本内容</param>
         private void CleanBeforeSending(string textAll)
         {
+            TrackBookSegment(textAll);
             this.textBoxEx1.Clear(); // 清空跟打区
             this.richTextBox1.SelectAll();
             this.richTextBox1.SelectionBackColor = Theme.R1Back;
@@ -2580,6 +2584,7 @@ namespace WindowsFormsApplication2
                     this.lblAutoReType.Text = "0";
                     //已跟打赋值
                     Glob.HaveTypeCount++;//已跟打段数
+                    CompleteBookSegment();
 
                     #region 跟打结束
 
@@ -4468,7 +4473,10 @@ namespace WindowsFormsApplication2
         #region 关闭后的设置
         private void CloseTyping(object sender, FormClosedEventArgs e)
         {
-            SaveSendSessionSnapshot();
+            // 电子书进度以云端为准，普通发文快照不含书籍/章节身份，不能用于恢复同步。
+            if (bookText == null) SaveSendSessionSnapshot();
+            else DeleteSendSessionSnapshot();
+            ResetBookMode(preserveResume: bookText != null && NewSendText.发文状态);
 
             int tX = this.Location.X;//横坐标
             int tY = this.Location.Y;
@@ -4664,6 +4672,7 @@ namespace WindowsFormsApplication2
                 switch (MessageBox.Show("正在发文中，请问你要做什么？\r\n选择是：停止当前发文，打开新发文\r\n选择否：打开当前发文状态", "发文询问", MessageBoxButtons.YesNoCancel))
                 {
                     case System.Windows.Forms.DialogResult.Yes:
+                        ResetBookMode();
                         NewSendText.发文状态 = false;
                         if (发文状态窗口 != null)
                         {
@@ -5592,6 +5601,7 @@ namespace WindowsFormsApplication2
         {
             if (NewSendText.发文状态)
             {
+                if (AdvanceBookOnSendNext()) return;
                 if (NewSendText.是否周期)
                 {
                     timerTSend.Stop();
@@ -5711,6 +5721,7 @@ namespace WindowsFormsApplication2
         /// </summary>
         public void StopSendFun()
         {
+            ResetBookMode();
             if (NewSendText.发文状态)
             {
                 if (NewSendText.是否周期)
@@ -5810,26 +5821,45 @@ namespace WindowsFormsApplication2
         }
         #endregion
 
-        #region 关闭详细信息
-        private void toolStripButton4_Click(object sender, EventArgs e)
+        #region 曲线与详细视图
+        private bool updatingHistoryViewMode;
+
+        private void SetHistoryViewMode(bool showCurve)
         {
-            bool temp = (sender as ToolStripButton).Checked;
-            if (temp)
+            if (this.updatingHistoryViewMode) return;
+            this.updatingHistoryViewMode = true;
+            try
             {
-                this.toolStripButton4.Checked = false;
+                // 两个按钮代表同一块区域的两种视图，不允许同时显示。
+                this.tbnSpline.Checked = showCurve;
+                this.toolStripButton4.Checked = !showCurve;
+                this.splitContainer3.Panel2Collapsed = false;
+                // 先展开目标面板，再折叠另一面板，避免切换过程中两个面板同时折叠。
+                if (showCurve)
+                {
+                    this.splitContainer4.Panel1Collapsed = false;
+                    this.splitContainer4.Panel2Collapsed = true;
+                }
+                else
+                {
+                    this.splitContainer4.Panel2Collapsed = false;
+                    this.splitContainer4.Panel1Collapsed = true;
+                }
+                Glob.isShowSpline = !showCurve;
+                IniWrite("拖动条", "曲线", (!showCurve).ToString());
+                IniWrite("程序控制", "详细信息", (!showCurve).ToString());
             }
-            else
+            finally
             {
-                this.toolStripButton4.Checked = true;
+                this.updatingHistoryViewMode = false;
             }
         }
 
-        private void toolStripButton4_CheckedChanged(object sender, EventArgs e)
+        private void toolStripButton4_Click(object sender, EventArgs e)
         {
-            bool temp = (sender as ToolStripButton).Checked;
-            this.splitContainer3.Panel2Collapsed = !temp;
-            IniWrite("程序控制", "详细信息", temp.ToString());
+            this.SetHistoryViewMode(false);
         }
+
         #endregion
 
         #region 文章处理
@@ -6093,8 +6123,7 @@ namespace WindowsFormsApplication2
             if (this.splitContainer3.Panel1Collapsed)
             {
                 isShowAll = false;
-                if (!Glob.isShowSpline)
-                    this.splitContainer4.Panel1Collapsed = false;
+                this.SetHistoryViewMode(false);
                 this.splitContainer1.Panel1Collapsed = false;
                 this.splitContainer3.Panel1Collapsed = false;
                 if (Glob.HaveTypeCount > 0)
@@ -6103,7 +6132,7 @@ namespace WindowsFormsApplication2
             else
             {
                 isShowAll = true;
-                this.splitContainer4.Panel1Collapsed = true;
+                this.SetHistoryViewMode(false);
                 this.splitContainer1.Panel1Collapsed = true;
                 this.splitContainer3.Panel1Collapsed = true;
             }
@@ -6111,17 +6140,17 @@ namespace WindowsFormsApplication2
 
         private void chartSpeed_DoubleClick(object sender, EventArgs e)
         {
-            if (this.splitContainer4.Panel2Collapsed)
+            if (this.splitContainer3.Panel1Collapsed)
             {
                 isShowAll = false;
-                this.splitContainer4.Panel2Collapsed = false;
+                this.SetHistoryViewMode(true);
                 this.splitContainer1.Panel1Collapsed = false;
                 this.splitContainer3.Panel1Collapsed = false;
             }
             else
             {
                 isShowAll = true;
-                this.splitContainer4.Panel2Collapsed = true;
+                this.SetHistoryViewMode(true);
                 this.splitContainer1.Panel1Collapsed = true;
                 this.splitContainer3.Panel1Collapsed = true;
             }
@@ -6285,11 +6314,8 @@ namespace WindowsFormsApplication2
             this.splitContainer3.Panel2Collapsed = false;
             this.splitContainer3.SplitterDistance = 89;
 
-            this.splitContainer4.Panel2Collapsed = false;
             this.splitContainer4.SplitterDistance = 206;
-
-            if (!Glob.isShowSpline)
-                this.splitContainer4.Panel1Collapsed = false;
+            this.SetHistoryViewMode(this.tbnSpline.Checked);
             this.splitContainer1.Panel1Collapsed = false;
             this.splitContainer3.Panel1Collapsed = false;
 
@@ -6901,19 +6927,7 @@ namespace WindowsFormsApplication2
         #region 曲线显示的控制
         private void tbnSpline_Click(object sender, EventArgs e)
         {
-            //是否显示曲线
-            if (this.tbnSpline.Checked)
-            {
-                splitContainer4.Panel1Collapsed = true;
-                IniWrite("拖动条", "曲线", "True");
-                this.tbnSpline.Checked = false;
-            }
-            else
-            {
-                splitContainer4.Panel1Collapsed = false;
-                IniWrite("拖动条", "曲线", "False");
-                this.tbnSpline.Checked = true;
-            }
+            this.SetHistoryViewMode(true);
         }
         #endregion
 

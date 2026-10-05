@@ -3,17 +3,21 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Drawing;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Windows.Forms;
 using System.IO;
 using System.Reflection;
+using System.Security.Cryptography;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions; //正则
 using System.Collections;
+using System.Threading.Tasks;
 using WindowsFormsApplication2.发文重写;
 using WindowsFormsApplication2.Storage;
 using WindowsFormsApplication2.Condition;
+using WindowsFormsApplication2.Legado;
 using Newtonsoft.Json;
 
 namespace WindowsFormsApplication2
@@ -198,12 +202,582 @@ namespace WindowsFormsApplication2
         private string sentSearchText = "";
         #endregion
 
+        private string legadoUrlValue;
+        private string legadoDirectoryValue;
+        private string legadoAccountValue;
+        private string legadoPasswordValue = "";
+        private bool legadoUseSystemProxyValue;
+        private string legadoSelectedFile;
+        private Label legadoConnectionSummary;
+        private ListView legadoBookList;
+        private ComboBox legadoTocRule;
+        private bool updatingLegadoTocRule;
+        private Label legadoStatus;
+        private Button legadoSettingsButton;
+        private Button legadoRefreshButton;
+        private Button legadoConnectButton;
+        private Button legadoRedownloadButton;
+        private bool legadoPrepared;
+        private bool legadoHttpWarningConfirmed;
+        private bool updatingLegadoBookList;
+        private bool legadoPreparing;
+        private bool legadoAutoRefreshAttempted;
+
         public 新发文(Form1 frm1)
         {
             frm = frm1;
             InitializeComponent();
+            InitializeLegadoTab();
+            FormClosed += (_, _) => frm.DiscardPreparedLegadoBook();
 
             this.WebSourceRoot = YTWebRequest.GetSourceUrl("LightAPIs", "article-storage", "main");
+        }
+
+        private void InitializeLegadoTab()
+        {
+            legadoUrlValue = _t.IniReadValue("LegadoWebDav", "URL", "https://dav.jianguoyun.com/dav/");
+            legadoDirectoryValue = _t.IniReadValue("LegadoWebDav", "Dir", "");
+            legadoAccountValue = _t.IniReadValue("LegadoWebDav", "Account", "");
+            string encryptedPassword = _t.IniReadValue("LegadoWebDav", "PasswordProtected", "");
+            bool passwordUnavailable = false;
+            if (!string.IsNullOrEmpty(encryptedPassword))
+            {
+                try { legadoPasswordValue = LegadoPasswordProtection.Unprotect(encryptedPassword); }
+                catch (Exception ex) when (ex is FormatException || ex is System.ComponentModel.Win32Exception)
+                {
+                    passwordUnavailable = true;
+                }
+            }
+            bool.TryParse(_t.IniReadValue("LegadoWebDav", "UseSystemProxy", "false"), out legadoUseSystemProxyValue);
+            legadoSelectedFile = _t.IniReadValue("LegadoWebDav", "BookFile", "");
+
+            var page = new TabPage("Legado 电子书");
+            tabControl1.TabPages.Add(page);
+            var root = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 1,
+                RowCount = 3,
+                Padding = new Padding(3)
+            };
+            root.RowStyles.Add(new RowStyle(SizeType.Absolute, 44));
+            root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+            root.RowStyles.Add(new RowStyle(SizeType.Absolute, 40));
+            page.Controls.Add(root);
+
+            var toolbar = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 4, RowCount = 1, Margin = Padding.Empty };
+            toolbar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            toolbar.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 180));
+            toolbar.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            toolbar.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            legadoConnectionSummary = new Label
+            {
+                Dock = DockStyle.Fill,
+                AutoEllipsis = true,
+                TextAlign = ContentAlignment.MiddleLeft
+            };
+            toolbar.Controls.Add(legadoConnectionSummary, 0, 0);
+            legadoTocRule = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList,
+                Dock = DockStyle.Fill, DropDownWidth = 260, Enabled = false };
+            legadoTocRule.Items.Add("自动匹配目录");
+            foreach (var rule in LegadoTxtBook.AvailableRules.Where(rule => !string.IsNullOrEmpty(rule.Pattern)))
+                legadoTocRule.Items.Add(rule.Name);
+            legadoTocRule.Items.Add("默认分章规则"); // Requires explicit Legado length; preview only.
+            legadoTocRule.SelectedIndex = 0;
+            legadoTocRule.SelectedIndexChanged += (_, _) =>
+            {
+                if (updatingLegadoTocRule || legadoBookList.SelectedItems.Count == 0) return;
+                _t.IniWriteValue("LegadoTocRules", GetLegadoRuleKey(), legadoTocRule.SelectedIndex == 0 ? "" : legadoTocRule.Text);
+                InvalidatePreparedLegadoBook();
+                UpdateLegadoSelectionControls();
+            };
+            toolbar.Controls.Add(legadoTocRule, 1, 0);
+            legadoSettingsButton = new Button { Text = "WebDAV 设置…", AutoSize = true, Anchor = AnchorStyles.Right };
+            legadoSettingsButton.Click += (_, _) => OpenLegadoSettings();
+            toolbar.Controls.Add(legadoSettingsButton, 2, 0);
+            legadoRefreshButton = new Button { Text = "刷新", AutoSize = true, Anchor = AnchorStyles.Right, Margin = new Padding(4, 0, 0, 0) };
+            legadoRefreshButton.Click += async (_, _) => await RefreshLegadoBookListAsync();
+            toolbar.Controls.Add(legadoRefreshButton, 3, 0);
+            root.Controls.Add(toolbar, 0, 0);
+
+            legadoBookList = new ListView
+            {
+                Dock = DockStyle.Fill,
+                View = View.Details,
+                FullRowSelect = true,
+                GridLines = true,
+                HideSelection = false,
+                MultiSelect = false,
+                HeaderStyle = ColumnHeaderStyle.Nonclickable
+            };
+            legadoBookList.Columns.Add("WebDAV 电子书", 360);
+            legadoBookList.Columns.Add("本地状态", 110);
+            legadoBookList.SelectedIndexChanged += LegadoBookList_SelectedIndexChanged;
+            legadoBookList.ItemActivate += async (_, _) => await PrepareLegadoBookAsync(false);
+            root.Controls.Add(legadoBookList, 0, 1);
+
+            var actions = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 3, RowCount = 1, Margin = Padding.Empty };
+            actions.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            actions.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            actions.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            legadoStatus = new Label
+            {
+                Dock = DockStyle.Fill,
+                AutoEllipsis = true,
+                TextAlign = ContentAlignment.MiddleLeft,
+                Text = "请先在 WebDAV 设置中连接，再双击书籍读取进度。"
+            };
+            actions.Controls.Add(legadoStatus, 0, 0);
+            legadoConnectButton = new Button { Text = "读取进度", AutoSize = true, Anchor = AnchorStyles.Right, Enabled = false };
+            legadoConnectButton.Click += async (_, _) => await PrepareLegadoBookAsync(false);
+            actions.Controls.Add(legadoConnectButton, 1, 0);
+            legadoRedownloadButton = new Button { Text = "更新缓存", AutoSize = true, Anchor = AnchorStyles.Right, Margin = new Padding(4, 0, 0, 0), Enabled = false };
+            legadoRedownloadButton.Click += async (_, _) => await PrepareLegadoBookAsync(true);
+            actions.Controls.Add(legadoRedownloadButton, 2, 0);
+            root.Controls.Add(actions, 0, 2);
+            UpdateLegadoConnectionSummary();
+            if (passwordUnavailable)
+            {
+                legadoStatus.ForeColor = Color.DarkRed;
+                legadoStatus.Text = "已保存的 WebDAV 密码无法由当前 Windows 用户解密，请在设置中重新输入。";
+            }
+        }
+
+        private void OpenLegadoSettings()
+        {
+            using var dialog = new LegadoWebDavSettingsDialog(
+                legadoUrlValue, legadoDirectoryValue, legadoAccountValue, legadoPasswordValue, legadoUseSystemProxyValue);
+            if (dialog.ShowDialog(this) != DialogResult.OK) return;
+            if (string.IsNullOrWhiteSpace(dialog.Password))
+            {
+                MessageBox.Show(this, "请输入 WebDAV 密码；确认后将使用当前 Windows 用户加密保存。", "WebDAV 设置",
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            string protectedPassword;
+            try { protectedPassword = LegadoPasswordProtection.Protect(dialog.Password); }
+            catch (System.ComponentModel.Win32Exception ex)
+            {
+                MessageBox.Show(this, "无法加密保存 WebDAV 密码，设置未更改：" + ex.Message,
+                    "WebDAV 设置", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            bool urlChanged = !string.Equals(legadoUrlValue, dialog.ServerUrl, StringComparison.OrdinalIgnoreCase);
+            legadoUrlValue = dialog.ServerUrl;
+            legadoDirectoryValue = dialog.Directory;
+            legadoAccountValue = dialog.Account;
+            legadoPasswordValue = dialog.Password;
+            legadoUseSystemProxyValue = dialog.UseSystemProxy;
+            if (urlChanged) legadoHttpWarningConfirmed = false;
+            legadoSelectedFile = _t.IniReadValue("LegadoWebDav", "BookFile", legadoSelectedFile);
+            _t.IniWriteValue("LegadoWebDav", "URL", legadoUrlValue);
+            _t.IniWriteValue("LegadoWebDav", "Dir", legadoDirectoryValue);
+            _t.IniWriteValue("LegadoWebDav", "Account", legadoAccountValue);
+            _t.IniWriteValue("LegadoWebDav", "PasswordProtected", protectedPassword);
+            _t.IniWriteValue("LegadoWebDav", "UseSystemProxy", legadoUseSystemProxyValue.ToString());
+            InvalidatePreparedLegadoBook();
+            UpdateLegadoConnectionSummary();
+            _ = RefreshLegadoBookListAsync();
+        }
+
+        private void UpdateLegadoConnectionSummary()
+        {
+            legadoConnectionSummary.Text = string.IsNullOrWhiteSpace(legadoAccountValue)
+                ? "WebDAV 尚未配置"
+                : $"{legadoUrlValue}  ·  {legadoAccountValue}  ·  {(legadoUseSystemProxyValue ? "系统代理" : "直连")}";
+            toolTip1.SetToolTip(legadoConnectionSummary, legadoConnectionSummary.Text);
+        }
+
+        private async Task RefreshLegadoBookListAsync()
+        {
+            if (updatingLegadoBookList || legadoPreparing || IsDisposed || Disposing) return;
+            if (string.IsNullOrWhiteSpace(legadoPasswordValue))
+            {
+                legadoStatus.Text = "请先打开 WebDAV 设置并输入密码。";
+                return;
+            }
+            if (!ConfirmLegadoHttpUse()) return;
+            SetLegadoControlsEnabled(false);
+            updatingLegadoBookList = true;
+            bool listUpdateStarted = false;
+            var scanTimer = Stopwatch.StartNew();
+            legadoStatus.ForeColor = SystemColors.ControlText;
+            legadoStatus.Text = "正在连接 WebDAV 扫描 books/…";
+            UseWaitCursor = true;
+            try
+            {
+                string selectedFile = legadoBookList.SelectedItems.Count > 0
+                    ? (legadoBookList.SelectedItems[0].Tag as LegadoBookListItem)?.FileName
+                    : legadoSelectedFile;
+                var scan = await frm.ListLegadoBooksAsync(legadoUrlValue, legadoDirectoryValue,
+                    legadoAccountValue, legadoPasswordValue, legadoUseSystemProxyValue);
+                if (IsDisposed || Disposing) return;
+                var books = scan.Books;
+                legadoBookList.BeginUpdate();
+                listUpdateStarted = true;
+                legadoBookList.Items.Clear();
+                foreach (var book in books)
+                {
+                    var item = new ListViewItem(book.FileName);
+                    item.SubItems.Add(IsPreviewOnlyBook(book.FileName)
+                        ? book.IsCached ? "仅预览 · 已缓存" : "仅预览 · 首次下载"
+                        : book.IsCached ? "已缓存" : "首次使用时下载");
+                    item.Tag = book;
+                    legadoBookList.Items.Add(item);
+                    if (string.Equals(book.FileName, selectedFile, StringComparison.Ordinal))
+                    {
+                        item.Selected = true;
+                        item.Focused = true;
+                    }
+                }
+                if (legadoBookList.SelectedItems.Count == 0 && legadoBookList.Items.Count > 0)
+                {
+                    legadoBookList.Items[0].Selected = true;
+                    legadoBookList.Items[0].Focused = true;
+                }
+                legadoSelectedFile = legadoBookList.SelectedItems.Count > 0
+                    ? (legadoBookList.SelectedItems[0].Tag as LegadoBookListItem)?.FileName
+                    : null;
+                if (!string.Equals(selectedFile, legadoSelectedFile, StringComparison.Ordinal))
+                    InvalidatePreparedLegadoBook();
+                legadoStatus.ForeColor = SystemColors.ControlText;
+                string requestMode = $"Depth:1 共 {scan.RequestCount} 次请求";
+                legadoStatus.Text = $"已扫描到 {books.Count} 本 TXT/EPUB（{scanTimer.Elapsed.TotalSeconds:0.0} 秒，{requestMode}）；EPUB 仅预览，不同步进度。";
+                toolTip1.SetToolTip(legadoStatus, legadoStatus.Text);
+            }
+            catch (Exception ex)
+            {
+                if (!IsDisposed && !Disposing)
+                {
+                    legadoStatus.ForeColor = Color.DarkRed;
+                    legadoStatus.Text = ex.Message;
+                }
+            }
+            finally
+            {
+                if (!IsDisposed && !Disposing)
+                {
+                    if (listUpdateStarted) legadoBookList.EndUpdate();
+                    SetLegadoControlsEnabled(true);
+                    UpdateLegadoSelectionControls();
+                    UseWaitCursor = false;
+                }
+                updatingLegadoBookList = false;
+                if (!IsDisposed && !Disposing) UpdateLegadoRuleSelection();
+            }
+        }
+
+        private string GetLegadoRuleKey()
+        {
+            string book = (legadoBookList.SelectedItems[0].Tag as LegadoBookListItem).FileName;
+            byte[] id = SHA256.HashData(Encoding.UTF8.GetBytes(
+                legadoUrlValue + "\n" + legadoDirectoryValue + "\n" + legadoAccountValue + "\n" + book));
+            return Convert.ToHexString(id);
+        }
+
+        private static bool IsPreviewOnlyBook(string fileName) =>
+            fileName.EndsWith(".epub", StringComparison.OrdinalIgnoreCase);
+
+        private void UpdateLegadoRuleSelection()
+        {
+            updatingLegadoTocRule = true;
+            try
+            {
+                bool selected = legadoBookList.SelectedItems.Count > 0;
+                legadoTocRule.Enabled = selected && !updatingLegadoBookList && !legadoPreparing &&
+                    !IsPreviewOnlyBook((legadoBookList.SelectedItems[0].Tag as LegadoBookListItem).FileName);
+                string saved = selected ? _t.IniReadValue("LegadoTocRules", GetLegadoRuleKey(), "") : "";
+                int index = legadoTocRule.Items.IndexOf(saved);
+                legadoTocRule.SelectedIndex = index > 0 ? index : 0;
+            }
+            finally { updatingLegadoTocRule = false; }
+            UpdateLegadoSelectionControls();
+        }
+
+        private void LegadoBookList_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (legadoBookList.SelectedItems.Count > 0)
+            {
+                var book = legadoBookList.SelectedItems[0].Tag as LegadoBookListItem;
+                if (book != null && !updatingLegadoBookList &&
+                    !string.Equals(legadoSelectedFile, book.FileName, StringComparison.Ordinal))
+                {
+                    legadoSelectedFile = book.FileName;
+                    InvalidatePreparedLegadoBook();
+                }
+            }
+            UpdateLegadoSelectionControls();
+            if (!updatingLegadoBookList) UpdateLegadoRuleSelection();
+        }
+
+        private void UpdateLegadoSelectionControls()
+        {
+            bool hasSelection = legadoBookList.SelectedItems.Count > 0;
+            legadoConnectButton.Enabled = hasSelection;
+            legadoConnectButton.Text = hasSelection &&
+                (IsPreviewOnlyBook((legadoBookList.SelectedItems[0].Tag as LegadoBookListItem).FileName) ||
+                 legadoTocRule.Text == "默认分章规则")
+                ? "预览书籍" : "读取进度";
+            legadoRedownloadButton.Enabled = hasSelection;
+        }
+
+        private bool ConfirmLegadoHttpUse()
+        {
+            if (!Uri.TryCreate(legadoUrlValue.Trim(), UriKind.Absolute, out var uri) || uri.Scheme != Uri.UriSchemeHttp ||
+                legadoHttpWarningConfirmed)
+                return true;
+            if (MessageBox.Show(this,
+                "HTTP 不加密：WebDAV 的 Basic 账号和密码可被网络中途观察到。确认仍使用 HTTP 连接吗？",
+                "HTTP WebDAV 安全提示", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes)
+                return false;
+            legadoHttpWarningConfirmed = true;
+            return true;
+        }
+
+        private async Task PrepareLegadoBookAsync(bool forceDownload)
+        {
+            if (updatingLegadoBookList || legadoPreparing || IsDisposed || Disposing) return;
+            var item = legadoBookList.SelectedItems.Count > 0 ? legadoBookList.SelectedItems[0] : null;
+            var selectedBook = item?.Tag as LegadoBookListItem;
+            if (selectedBook == null)
+            {
+                legadoStatus.Text = "请先选择一本电子书。";
+                return;
+            }
+            if (selectedBook.FileName.EndsWith(".epub", StringComparison.OrdinalIgnoreCase))
+            {
+                await PreviewLegadoEpubAsync(selectedBook.FileName, forceDownload);
+                return;
+            }
+            if (legadoTocRule.Text == "默认分章规则")
+            {
+                await PreviewLegadoNoTocAsync(selectedBook.FileName, forceDownload);
+                return;
+            }
+            legadoPrepared = false;
+            frm.DiscardPreparedLegadoBook();
+            btnGoSend.Enabled = false;
+            if (!ConfirmLegadoHttpUse()) return;
+            legadoPreparing = true;
+            SetLegadoControlsEnabled(false);
+            UseWaitCursor = true;
+            var loadTimer = Stopwatch.StartNew();
+            legadoStatus.ForeColor = SystemColors.ControlText;
+            legadoStatus.Text = forceDownload
+                ? "正在重新下载并更新本地缓存…"
+                : selectedBook.IsCached ? "正在读取本地缓存并查询云端进度…" : "首次使用，正在从 WebDAV 下载 TXT…";
+            try
+            {
+                string status = await frm.PrepareLegadoBookAsync(legadoUrlValue, legadoDirectoryValue,
+                    legadoAccountValue, legadoPasswordValue, selectedBook.FileName, forceDownload,
+                    legadoUseSystemProxyValue, legadoTocRule.SelectedIndex == 0 ? null : legadoTocRule.Text);
+                legadoPrepared = true;
+                legadoSelectedFile = selectedBook.FileName;
+                _t.IniWriteValue("LegadoWebDav", "BookFile", legadoSelectedFile);
+                item.SubItems[1].Text = "已缓存";
+                item.Tag = selectedBook with { IsCached = true };
+                legadoStatus.ForeColor = Color.DarkGreen;
+                legadoStatus.Text = $"{status}（耗时 {loadTimer.Elapsed.TotalSeconds:0.0} 秒）。确认后点击下方“开始电子书跟打”。";
+                toolTip1.SetToolTip(legadoStatus, legadoStatus.Text);
+                btnGoSend.Enabled = true;
+            }
+            catch (Exception ex)
+            {
+                legadoPrepared = false;
+                frm.DiscardPreparedLegadoBook();
+                btnGoSend.Enabled = false;
+                legadoStatus.ForeColor = Color.DarkRed;
+                legadoStatus.Text = ex.Message;
+            }
+            finally
+            {
+                legadoPreparing = false;
+                SetLegadoControlsEnabled(true);
+                UpdateLegadoSelectionControls();
+                UseWaitCursor = false;
+            }
+        }
+
+        private async Task PreviewLegadoNoTocAsync(string fileName, bool forceDownload)
+        {
+            legadoPrepared = false;
+            frm.DiscardPreparedLegadoBook();
+            btnGoSend.Enabled = false;
+            using var lengthDialog = new Form
+            {
+                Text = "无目录 TXT 分章（仅预览）",
+                StartPosition = FormStartPosition.CenterParent,
+                Size = new Size(470, 180),
+                FormBorderStyle = FormBorderStyle.FixedDialog,
+                MaximizeBox = false, MinimizeBox = false
+            };
+            var prompt = new Label { Text = "请输入 Legado 当前设置的无目录分章字数（3000–100000）。\n此值不在云端进度中；本次仅预览，不会读取或上传进度。",
+                Location = new Point(12, 12), Size = new Size(430, 48) };
+            var lengthInput = new TextBox { Location = new Point(12, 65), Width = 180 };
+            var ok = new Button { Text = "预览", DialogResult = DialogResult.OK,
+                Location = new Point(257, 100), Width = 80 };
+            var cancel = new Button { Text = "取消", DialogResult = DialogResult.Cancel,
+                Location = new Point(350, 100), Width = 80 };
+            lengthDialog.Controls.AddRange(new Control[] { prompt, lengthInput, ok, cancel });
+            lengthDialog.AcceptButton = ok;
+            lengthDialog.CancelButton = cancel;
+            if (lengthDialog.ShowDialog(this) != DialogResult.OK) return;
+            if (!int.TryParse(lengthInput.Text, out int splitLength) || splitLength < 3000 || splitLength > 100000)
+            {
+                legadoStatus.ForeColor = Color.DarkRed;
+                legadoStatus.Text = "请输入 Legado 当前设置的分章字数（3000–100000）；没有此值不能比对章节。";
+                return;
+            }
+            if (!ConfirmLegadoHttpUse()) return;
+            legadoPreparing = true;
+            SetLegadoControlsEnabled(false);
+            legadoStatus.Text = "正在从缓存或 WebDAV 读取无目录 TXT…";
+            try
+            {
+                var chapters = await frm.PreviewLegadoNoTocAsync(legadoUrlValue, legadoDirectoryValue,
+                    legadoAccountValue, legadoPasswordValue, fileName, legadoUseSystemProxyValue,
+                    forceDownload, splitLength);
+                if (IsDisposed || Disposing) return;
+                using var preview = new Form
+                {
+                    Text = "无目录 TXT 预览（不读取或同步进度）",
+                    StartPosition = FormStartPosition.CenterParent,
+                    Size = new Size(620, 530)
+                };
+                var split = new SplitContainer { Dock = DockStyle.Fill, Orientation = Orientation.Horizontal };
+                preview.Shown += (_, _) => split.SplitterDistance = split.Height / 2;
+                var list = new ListView { Dock = DockStyle.Fill, View = View.Details, FullRowSelect = true };
+                list.Columns.Add("章节标题", 580);
+                foreach (var chapter in chapters) list.Items.Add(new ListViewItem(chapter.Title));
+                var text = new RichTextBox { Dock = DockStyle.Fill, ReadOnly = true };
+                list.SelectedIndexChanged += (_, _) =>
+                {
+                    if (list.SelectedIndices.Count > 0) text.Text = chapters[list.SelectedIndices[0]].Content;
+                };
+                split.Panel1.Controls.Add(list);
+                split.Panel2.Controls.Add(text);
+                preview.Controls.Add(split);
+                legadoStatus.ForeColor = SystemColors.ControlText;
+                legadoStatus.Text = $"按输入的 {splitLength} 字分出 {chapters.Count} 章；仅预览，禁止跟打同步。";
+                preview.ShowDialog(this);
+            }
+            catch (Exception ex)
+            {
+                if (!IsDisposed && !Disposing)
+                {
+                    legadoStatus.ForeColor = Color.DarkRed;
+                    legadoStatus.Text = "无目录 TXT 预览失败：" + ex.Message;
+                }
+            }
+            finally
+            {
+                legadoPreparing = false;
+                if (!IsDisposed && !Disposing) SetLegadoControlsEnabled(true);
+            }
+        }
+
+        private async Task PreviewLegadoEpubAsync(string fileName, bool forceDownload)
+        {
+            legadoPrepared = false;
+            frm.DiscardPreparedLegadoBook();
+            btnGoSend.Enabled = false;
+            if (!ConfirmLegadoHttpUse()) return;
+            legadoPreparing = true;
+            SetLegadoControlsEnabled(false);
+            legadoStatus.Text = "正在从本地缓存或 WebDAV 读取 EPUB 目录…";
+            try
+            {
+                var book = await frm.PreviewLegadoEpubAsync(legadoUrlValue, legadoDirectoryValue,
+                    legadoAccountValue, legadoPasswordValue, fileName, legadoUseSystemProxyValue, forceDownload);
+                if (IsDisposed || Disposing) return;
+                using var preview = new Form
+                {
+                    Text = "EPUB 目录/正文预览（暂不支持进度同步）",
+                    StartPosition = FormStartPosition.CenterParent,
+                    Size = new Size(620, 530)
+                };
+                var split = new SplitContainer { Dock = DockStyle.Fill, Orientation = Orientation.Horizontal };
+                preview.Shown += (_, _) => split.SplitterDistance = split.Height / 2;
+                var list = new ListView { Dock = DockStyle.Fill, View = View.Details, FullRowSelect = true };
+                list.Columns.Add("章节标题", 300);
+                list.Columns.Add("章节地址", 280);
+                foreach (var chapter in book.Chapters)
+                    list.Items.Add(new ListViewItem(new[] { chapter.Title, chapter.Href }));
+                if (book.Progress != null)
+                    preview.Shown += (_, _) =>
+                    {
+                        list.Items[book.Progress.ChapterIndex].Selected = true;
+                        list.Items[book.Progress.ChapterIndex].EnsureVisible();
+                    };
+                var text = new RichTextBox { Dock = DockStyle.Fill, ReadOnly = true };
+                list.SelectedIndexChanged += async (_, _) =>
+                {
+                    if (list.SelectedIndices.Count == 0) return;
+                    int selectedIndex = list.SelectedIndices[0];
+                    string href = book.Chapters[selectedIndex].Href;
+                    string nextHref = book.Chapters.Skip(selectedIndex + 1)
+                        .FirstOrDefault(chapter => !chapter.Href.StartsWith("epub-toc://", StringComparison.Ordinal))?.Href;
+                    try
+                    {
+                        string content = await Task.Run(() => LegadoEpubToc.ReadChapterText(book.Content, href, nextHref));
+                        if (!preview.IsDisposed && list.SelectedIndices.Count > 0 &&
+                            list.SelectedIndices[0] == selectedIndex) text.Text = content;
+                    }
+                    catch (Exception ex)
+                    {
+                        if (!preview.IsDisposed && list.SelectedIndices.Count > 0 &&
+                            list.SelectedIndices[0] == selectedIndex) text.Text = ex.Message;
+                    }
+                };
+                split.Panel1.Controls.Add(list);
+                split.Panel2.Controls.Add(text);
+                preview.Controls.Add(split);
+                legadoStatus.ForeColor = SystemColors.ControlText;
+                legadoStatus.Text = book.Progress == null
+                    ? $"EPUB 已识别 {book.Chapters.Count} 项；{book.ProgressWarning} 禁止跟打同步。"
+                    : $"EPUB 已识别 {book.Chapters.Count} 项；云端第 {book.Progress.ChapterIndex} 项、章内 {book.Progress.ChapterPos}（只读，不可按预览字数定位）。";
+                preview.ShowDialog(this);
+            }
+            catch (Exception ex)
+            {
+                if (!IsDisposed && !Disposing)
+                {
+                    legadoStatus.ForeColor = Color.DarkRed;
+                    legadoStatus.Text = "EPUB 目录预览失败：" + ex.Message;
+                }
+            }
+            finally
+            {
+                legadoPreparing = false;
+                if (!IsDisposed && !Disposing) SetLegadoControlsEnabled(true);
+            }
+        }
+
+        private void SetLegadoControlsEnabled(bool enabled)
+        {
+            legadoSettingsButton.Enabled = enabled;
+            legadoRefreshButton.Enabled = enabled;
+            legadoBookList.Enabled = enabled;
+            legadoTocRule.Enabled = enabled && legadoBookList.SelectedItems.Count > 0 &&
+                !IsPreviewOnlyBook((legadoBookList.SelectedItems[0].Tag as LegadoBookListItem).FileName);
+            UpdateLegadoSelectionControls();
+            if (!enabled)
+            {
+                legadoConnectButton.Enabled = false;
+                legadoRedownloadButton.Enabled = false;
+            }
+        }
+
+        private void InvalidatePreparedLegadoBook()
+        {
+            if (!legadoPrepared) return;
+            legadoPrepared = false;
+            btnGoSend.Enabled = false;
+            frm.DiscardPreparedLegadoBook();
+            legadoStatus.ForeColor = SystemColors.ControlText;
+            legadoStatus.Text = "书籍或 WebDAV 配置已更改，请重新读取进度。";
         }
 
         private void 新发文_Load(object sender, EventArgs e)
@@ -241,7 +815,7 @@ namespace WindowsFormsApplication2
         }
 
         #region Tab页切换
-        private void tabControl1_SelectedIndexChanged(object sender, EventArgs e)
+        private async void tabControl1_SelectedIndexChanged(object sender, EventArgs e)
         {
             ClearAll();
             int getid = (sender as TabControl).SelectedIndex;
@@ -261,6 +835,17 @@ namespace WindowsFormsApplication2
             {
                 this.ReadWebArticle();
             }
+            else if (getid == 6)
+            {
+                lblStyle.Text = "电子书";
+                btnGoSend.Text = "开始电子书跟打";
+                btnGoSend.Enabled = legadoPrepared;
+                tabControl2.SelectedIndex = (int)NewSendText.ContentTypeValue.Article;
+            }
+            else
+            {
+                btnGoSend.Text = "开启发文";
+            }
 
             if (getid == 5)
             { // 保存的发文配置，需要锁定一些控件
@@ -270,10 +855,20 @@ namespace WindowsFormsApplication2
             }
             else
             {
+                if (getid != 6) btnGoSend.Text = "开启发文";
                 NewSendText.SentId = -1;
                 this.cbx乱序全段不重复.Enabled = true;
                 this.tabControl2.Enabled = true;
                 this.groupBox1.Enabled = true;
+            }
+
+            // Only auto-scan once per send window; returning to the tab must not repeatedly
+            // contact the server. Explicit Refresh and saving settings still rescan on demand.
+            if (getid == 6 && legadoBookList != null && !legadoAutoRefreshAttempted &&
+                !string.IsNullOrWhiteSpace(legadoAccountValue) && !string.IsNullOrWhiteSpace(legadoPasswordValue))
+            {
+                legadoAutoRefreshAttempted = true;
+                await RefreshLegadoBookListAsync();
             }
         }
         #endregion
@@ -2047,6 +2642,31 @@ namespace WindowsFormsApplication2
         #region 开始发文
         private void btnGoSend_Click(object sender, EventArgs e)
         {
+            if (tabControl1.SelectedIndex == 6)
+            {
+                if (!legadoPrepared)
+                {
+                    MessageBox.Show(this, "请先连接 WebDAV 并读取云端进度。", "Legado 电子书");
+                    return;
+                }
+                if (!int.TryParse(tbxSendCount.Text, out int segmentLength) || segmentLength < 1)
+                {
+                    MessageBox.Show(this, "请检查每段字数设置。", "Legado 电子书");
+                    return;
+                }
+                if (!frm.StartPreparedLegadoBook(segmentLength))
+                {
+                    MessageBox.Show(this, "无法启动电子书跟打，请重新连接并读取进度。", "Legado 电子书");
+                    legadoPrepared = false;
+                    return;
+                }
+                legadoPrepared = false;
+                WriteTempConfig();
+                frm.发文状态ToolStripMenuItem.PerformClick();
+                Close();
+                return;
+            }
+
             if (NewSendText.SentId < 0)
             {
                 rtbShowText.Text = "处理中...";

@@ -1830,9 +1830,8 @@
             this.toolStripButton4.Name = "toolStripButton4";
             this.toolStripButton4.Size = new System.Drawing.Size(36, 19);
             this.toolStripButton4.Text = "详细";
-            this.toolStripButton4.ToolTipText = "显示与隐藏跟打历史区等详细信息";
+            this.toolStripButton4.ToolTipText = "显示跟打历史详细数据（与曲线互斥）";
             this.toolStripButton4.WdithAdjust = 0;
-            this.toolStripButton4.CheckedChanged += new System.EventHandler(this.toolStripButton4_CheckedChanged);
             this.toolStripButton4.Click += new System.EventHandler(this.toolStripButton4_Click);
             // 
             // RealTimeData
@@ -1863,7 +1862,7 @@
             this.tbnSpline.Name = "tbnSpline";
             this.tbnSpline.Size = new System.Drawing.Size(36, 19);
             this.tbnSpline.Text = "曲线";
-            this.tbnSpline.ToolTipText = "显示与隐藏曲线界面\r\n不影响曲线统计";
+            this.tbnSpline.ToolTipText = "显示实时曲线（与详细数据互斥，不影响曲线统计）";
             this.tbnSpline.WdithAdjust = 2;
             this.tbnSpline.Click += new System.EventHandler(this.tbnSpline_Click);
             // 

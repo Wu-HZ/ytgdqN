@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>12</LangVersion>
+    <Nullable>disable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <Compile Include="../../WindowsFormsApplication2/Legado/LegadoBookCache.cs" Link="LegadoBookCache.cs" />
+    <Compile Include="../../WindowsFormsApplication2/Legado/LegadoPasswordProtection.cs" Link="LegadoPasswordProtection.cs" />
+    <Compile Include="../../WindowsFormsApplication2/Legado/LegadoBookResume.cs" Link="LegadoBookResume.cs" />
+    <Compile Include="../../WindowsFormsApplication2/Legado/LegadoTxtBook.cs" Link="LegadoTxtBook.cs" />
+    <Compile Include="../../WindowsFormsApplication2/Legado/LegadoNoTocPreview.cs" Link="LegadoNoTocPreview.cs" />
+    <Compile Include="../../WindowsFormsApplication2/Legado/LegadoEpubToc.cs" Link="LegadoEpubToc.cs" />
+    <Compile Include="../../WindowsFormsApplication2/Legado/LegadoWebDavClient.cs" Link="LegadoWebDavClient.cs" />
+    <EmbeddedResource Include="../../WindowsFormsApplication2/Legado/LegadoTxtTocRules.json" LogicalName="LegadoTxtTocRules.json" />
+  </ItemGroup>
+</Project>
