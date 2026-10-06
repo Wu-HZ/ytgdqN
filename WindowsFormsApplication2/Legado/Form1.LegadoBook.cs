@@ -292,12 +292,12 @@ namespace WindowsFormsApplication2
             bookPendingCompleted = true;
             NewSendText.发文状态 = true;
             NewSendText.类型 = "文章";
-            NewSendText.ArticleSource = NewSendText.ArticleSourceValue.Web;
+            NewSendText.ArticleSource = NewSendText.ArticleSourceValue.LegadoEbook;
             NewSendText.SentId = -1;
             NewSendText.trim = false;
             NewSendText.文章全文 = chapter.TypingText;
             NewSendText.发文全文 = chapter.TypingText;
-            NewSendText.标题 = $"{bookIdentity.Name} · {chapter.Title}";
+            NewSendText.标题 = chapter.Title;
             NewSendText.标记 = bookCompletedPosition;
             NewSendText.字数 = bookSegmentLength;
             NewSendText.已发段数 = 0;

@@ -110,7 +110,8 @@ namespace WindowsFormsApplication2
             Clipboard = 2,
             Web = 3,
             Stored = 4,
-            Sent = 5
+            Sent = 5,
+            LegadoEbook = 6
         }
 
         public enum ContentTypeValue

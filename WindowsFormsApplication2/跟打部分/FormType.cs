@@ -2928,7 +2928,7 @@ namespace WindowsFormsApplication2
                             string inistraSrf = "";
                             if (Glob.InstraSrf_ != "0")
                             {
-                                inistraSrf = " 输入法:" + Glob.InstraSrf;
+                                inistraSrf = " " + Glob.InstraSrf;
                             }
 
                             //打词
@@ -3060,7 +3060,7 @@ namespace WindowsFormsApplication2
                                 TotalSend += qidayu + " 赛文验证:" + lblMatchCount.Text;
                             }
                             TotalSend += " 校验:" + Validation.Validat(TotalSend);
-                            TotalSend += inistra + 暂停 + 版本;
+                            TotalSend += inistra + 暂停 + 版本 + " 雨天跟打器";
                             Glob.theLastGoal = TotalSend;
                         }
                         #endregion

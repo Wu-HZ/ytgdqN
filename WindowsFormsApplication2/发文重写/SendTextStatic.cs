@@ -224,6 +224,8 @@ namespace WindowsFormsApplication2
                         return "保存的文章";
                     case NewSendText.ArticleSourceValue.Sent:
                         return "保存的发文";
+                    case NewSendText.ArticleSourceValue.LegadoEbook:
+                        return "Legado 电子书";
                     default:
                         return "未知来源";
                 }
@@ -232,6 +234,10 @@ namespace WindowsFormsApplication2
 
         private string 文章类型 {
             get {
+                if (NewSendText.ArticleSource == NewSendText.ArticleSourceValue.LegadoEbook)
+                {
+                    return "电子书";
+                }
                 string str;
                 if (NewSendText.类型 == "单字")
                 {

@@ -1,4 +1,5 @@
 using System;
+using System.Drawing;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Windows.Forms;
@@ -59,7 +60,18 @@ internal static class Program
         sourceTabs.SelectedIndex = sourceTabs.TabCount - 1;
         Check(lengthBox.Text == "180", $"ebook should restore its article profile, got {lengthBox.Text}");
 
-        Console.WriteLine("Real NewSend UI segment-length switching passed (single 10, article/ebook 200, independent custom values)");
+        NewSendText.ArticleSource = NewSendText.ArticleSourceValue.LegadoEbook;
+        NewSendText.类型 = "文章"; // Internal typing remains article-like; status should present the product type.
+        using var status = new SendTextStatic(Point.Empty, null);
+        var statusType = status.GetType();
+        string sourceLabel = (string)statusType.GetProperty("文章来源", BindingFlags.Instance | BindingFlags.NonPublic)
+            .GetValue(status);
+        string typeLabel = (string)statusType.GetProperty("文章类型", BindingFlags.Instance | BindingFlags.NonPublic)
+            .GetValue(status);
+        Check(sourceLabel == "Legado 电子书", $"ebook source label mismatch: {sourceLabel}");
+        Check(typeLabel == "电子书", $"ebook content type label mismatch: {typeLabel}");
+
+        Console.WriteLine("Real NewSend UI tests passed (segment switching plus Legado ebook source/type labels)");
     }
 
     private static object Field(Type type, object target, string name) =>
