@@ -2594,9 +2594,11 @@ namespace WindowsFormsApplication2
                     LblHaveTypingChange();
 
                     textBoxEx1.ReadOnly = true;
-                    ts = Glob.TypeUseTime;
+                    ts = (DateTime.Now - sTime + recordUsedTime).TotalSeconds;
+                    if (!double.IsFinite(ts) || ts < 0.01) ts = 0.01;
+                    Glob.TypeUseTime = ts;
                     Sw = 0; //初始化
-                    Glob.TotalUse += Glob.TypeUseTime;
+                    Glob.TotalUse += ts;
                     bool isEn = CategoryHandler.IsEn(Glob.Category);
                     //处理数据
                     double speed = Math.Round((TextLen - Glob.StartTextLen) * 60 / ts, 2); // 不处理错字
@@ -2735,8 +2737,8 @@ namespace WindowsFormsApplication2
                         Glob.SpeedGrade = gradeValue / Glob.SpeedGradeCount;
                     }
 
-                    //? 跟打用时小于 1s 以及错字超过 10% 时不处理
-                    if (Glob.TypeUseTime >= 1 && Glob.TextCz <= (int)TextLen / 10)
+                    // 每个完成的段都要留下成绩；用时和错字比例不应让已完成的段消失。
+                    if (Glob.TypeUseTime > 0)
                     {
                         //? 回改率和打词率的分母不需要减去起始字数量，因为这些数据和时间没有联系，起始的字数同样被统计进来
                         // 回改率
