@@ -71,7 +71,21 @@ internal static class Program
         Check(sourceLabel == "Legado 电子书", $"ebook source label mismatch: {sourceLabel}");
         Check(typeLabel == "电子书", $"ebook content type label mismatch: {typeLabel}");
 
-        Console.WriteLine("Real NewSend UI tests passed (segment switching plus Legado ebook source/type labels)");
+        Glob.AllWordDic.Clear();
+        Glob.AllCodeDic.Clear();
+        Glob.AllWordDic.Add("甲", "a");
+        Glob.AllWordDic.Add("乙", "a");
+        Glob.AllCodeDic.Add("a", "甲");
+        Glob.AllCodeDic.Add("a2", "乙");
+        var lookupMethod = typeof(Form1).GetMethod("GetWordCode", BindingFlags.Static | BindingFlags.NonPublic);
+        var duplicate = ((string Code, int FindIndex))lookupMethod.Invoke(null, new object[] { "乙" });
+        var missing = ((string Code, int FindIndex))lookupMethod.Invoke(null, new object[] { "丙" });
+        Check(duplicate.Code == "a" && duplicate.FindIndex == 2,
+            $"duplicate code lookup mismatch: {duplicate.Code}/{duplicate.FindIndex}");
+        Check(missing.Code == "" && missing.FindIndex == 1,
+            $"missing code lookup mismatch: {missing.Code}/{missing.FindIndex}");
+
+        Console.WriteLine("Real NewSend UI tests passed (segment switching, ebook labels, and code lookup)");
     }
 
     private static object Field(Type type, object target, string name) =>

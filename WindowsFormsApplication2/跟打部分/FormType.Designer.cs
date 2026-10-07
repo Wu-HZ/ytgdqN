@@ -159,7 +159,6 @@
             this.lblspeedcheck = new System.Windows.Forms.Label();
             this.picBar = new System.Windows.Forms.PictureBox();
             this.splitContainer4 = new System.Windows.Forms.SplitContainer();
-            this.richTextBox2 = new System.Windows.Forms.RichTextBox();
             this.toolStrip1 = new System.Windows.Forms.ToolStrip();
             this.toolStripButton4 = new WindowsFormsApplication2.ToolButton();
             this.RealTimeData = new WindowsFormsApplication2.ToolButton();
@@ -1770,24 +1769,11 @@
             // splitContainer4.Panel2
             // 
             this.splitContainer4.Panel2.Controls.Add(this.dataGridView1);
-            this.splitContainer4.Panel2.Controls.Add(this.richTextBox2);
             this.splitContainer4.Size = new System.Drawing.Size(688, 55);
             this.splitContainer4.SplitterDistance = 206;
             this.splitContainer4.SplitterWidth = 1;
             this.splitContainer4.TabIndex = 1;
             this.splitContainer4.TabStop = false;
-            // 
-            // richTextBox2
-            // 
-            this.richTextBox2.Location = new System.Drawing.Point(54, 38);
-            this.richTextBox2.Name = "richTextBox2";
-            this.richTextBox2.ReadOnly = true;
-            this.richTextBox2.Size = new System.Drawing.Size(192, 16);
-            this.richTextBox2.TabIndex = 1;
-            this.richTextBox2.TabStop = false;
-            this.richTextBox2.Text = "";
-            this.richTextBox2.TextChanged += new System.EventHandler(this.richTextBox2_TextChanged);
-            // 
             // toolStrip1
             // 
             this.toolStrip1.AutoSize = false;
@@ -2746,7 +2732,6 @@
         public System.Windows.Forms.Label lblTitle;
         private System.Windows.Forms.Timer timer5;
         public System.Windows.Forms.SplitContainer splitContainer4;
-        private System.Windows.Forms.RichTextBox richTextBox2;
         private System.Windows.Forms.DataVisualization.Charting.Chart chartSpeed;
         private System.Windows.Forms.ToolStrip toolStrip1;
         private ToolButton toolStripButton1;

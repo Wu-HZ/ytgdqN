@@ -56,6 +56,10 @@ namespace WindowsFormsApplication2
         /// </summary>
         private System.Windows.Forms.Timer cursorHideTimer;
         private bool cursorHidden = false;
+        private bool bmTipUpdateQueued;
+        private string pendingBmTipWord = "";
+        private string pendingBmTipCode = "";
+        private int pendingBmTipIndex;
         private double progressBarRatio;
         private string progressBarText = "";
         private double splitterProgressRatio;
@@ -183,10 +187,6 @@ namespace WindowsFormsApplication2
         public Form1()
         {
             InitializeComponent();
-            // 输入分析缓冲控件不能放在会被“曲线”模式折叠的详细面板中；
-            // 保持其原有 TextChanged 事件路径，同时避免折叠后消息延迟影响自动跳段。
-            this.splitContainer3.Panel1.Controls.Add(this.richTextBox2);
-            this.richTextBox2.Bounds = new Rectangle(-200, -200, 1, 1);
             this.picBar.Paint += PicBar_Paint;
             this.splitContainer1.Paint += SplitContainer1_Paint;
             ConfigureRealtimeScoreGrid();
@@ -296,7 +296,7 @@ namespace WindowsFormsApplication2
                 t1.Start();
             }
 
-            // 文本分析仍由 richTextBox2 的 TextChanged 处理；切换视图不再通过模拟点击进行初始化。
+            // 文本分析由跟打输入框的 TextChanged 路径处理；切换视图不通过模拟点击初始化。
 
             // 恢复上次退出时的窗口状态
             bool isMaximized = !bool.TryParse(IniRead("窗口位置", "最大化", "True"), out bool maxVal) || maxVal;
@@ -2190,12 +2190,15 @@ namespace WindowsFormsApplication2
             end = Math.Min(Math.Min(end, typedText.Length), targetText.Length);
             if (end <= start) return;
 
-            var previouslyWrong = new HashSet<int>();
-            foreach (int index in Glob.FWords) previouslyWrong.Add(index);
+            HashSet<int> previouslyWrong = null;
             for (int i = Glob.FWords.Count - 1; i >= 0; i--)
             {
                 int index = (int)Glob.FWords[i];
-                if (index >= start && index < end) Glob.FWords.RemoveAt(i);
+                if (index >= start && index < end)
+                {
+                    (previouslyWrong ??= new HashSet<int>()).Add(index);
+                    Glob.FWords.RemoveAt(i);
+                }
             }
 
             bool inWrongRun = false;
@@ -2210,7 +2213,7 @@ namespace WindowsFormsApplication2
                     if (!inWrongRun)
                     {
                         Glob.FWords.Add(i);
-                        if (!previouslyWrong.Contains(i))
+                        if (previouslyWrong == null || !previouslyWrong.Contains(i))
                         {
                             Glob.WrongCharHistory.Add(new WrongCharEvent
                             {
@@ -2263,16 +2266,15 @@ namespace WindowsFormsApplication2
             });
         }
 
-        private void richTextBox2_TextChanged(object sender, EventArgs e)
+        private void ProcessTypingTextChanged(object sender, EventArgs e)
         {
             int TextLen = Glob.TextLen;
             if (TextLen > 1) // 文段长度超过 2 个字符才统计
             {
-                Application.DoEvents();
-
+                // 不在每次按键时嵌套泵送 UI 消息，避免重入与延迟堆积。
                 //获取文章
                 string TextAlticle = richTextBox1.Text;
-                string TextType = richTextBox2.Text;
+                string TextType = textBoxEx1.Text;
                 int TextLenNow = TextType.Length;
                 if (TextLenNow <= TextLen)
                 {
@@ -2306,7 +2308,7 @@ namespace WindowsFormsApplication2
                             }
                         }
 
-                        this.richTextBox2.BeginInvoke(new MethodInvoker(delegate
+                        this.BeginInvoke(new MethodInvoker(delegate
                         {
                             int nowHan = richTextBox1.GetPositionFromCharIndex(TextLenNow).Y; //当前
                             if (nowHan > 0)
@@ -2368,9 +2370,9 @@ namespace WindowsFormsApplication2
                             SetCursorPos(toXY.X + 30, toXY.Y);
                         try
                         {
-                            if (richTextBox1.Text.Substring(0, 1) == richTextBox2.Text.Substring(0, 1))
+                            if (richTextBox1.Text.Substring(0, 1) == textBoxEx1.Text.Substring(0, 1))
                             {
-                                RecTextTypeCount(richTextBox2.TextLength);
+                                RecTextTypeCount(textBoxEx1.TextLength);
                             }
                         }
                         catch { }
@@ -2403,7 +2405,7 @@ namespace WindowsFormsApplication2
                             try
                             {
                                 if (last >= richTextBox1.TextLength) { last = richTextBox1.TextLength - 1; }
-                                string lastinput = richTextBox2.Text.Substring(last, iPP);
+                                string lastinput = TextType.Substring(last, iPP);
                                 if (richTextBox1.Text.Substring(last, iPP) == lastinput) //所有的字非错的情况下
                                 {
                                     RecTextTypeCount(iPP);
@@ -3085,7 +3087,7 @@ namespace WindowsFormsApplication2
                         //* 保存成绩
                         Glob.ScoreHistory.InsertScore(Glob.TextTime.ToString("s"), Glob.CurSegmentNum, Spsend, jj, mc, Glob.词库理论码长, Glob.TextHg, Math.Abs(Glob.TextBg - Glob.TextHg), Glob.回车, Glob.选重, Glob.TextCz, Glob.TextHg_, UserJz, Glob.效率, Glob.TextJs, TextLen, Glob.aTypeWords, Glob.TextDc_, UserTime, databaseSegmentId, this.lblTitle.Text, Glob.Instration, Glob.Difficulty, (int)Glob.Category, Glob.CurrentSessionId);
                         Glob.ScoreHistory.InsertTypingDetail(
-                            Glob.TextTime.ToString("s"), Glob.TypeText, richTextBox2.Text,
+                            Glob.TextTime.ToString("s"), Glob.TypeText, textBoxEx1.Text,
                             JsonConvert.SerializeObject(Glob.TypeReport), JsonConvert.SerializeObject(finalWrongEvents));
                         //* 非发文模式下，保存后重置会话 ID，确保下次手动打段为新会话
                         if (!NewSendText.发文状态)
@@ -3788,8 +3790,8 @@ namespace WindowsFormsApplication2
 
         private void textBoxEx1_TextChanged(object sender, EventArgs e)
         {
-            richTextBox2.Text = textBoxEx1.Text; // 将跟打区内的文字传递至文本处理区(不可见)
             Glob.TypeTextCount = textBoxEx1.TextLength;
+            ProcessTypingTextChanged(sender, e);
 
             if (this.picBmTips.Checked && !string.IsNullOrEmpty(Glob.UsedTableIndex))
             {
@@ -3986,7 +3988,6 @@ namespace WindowsFormsApplication2
                     this.title1.Text = lblDuan.Text + " -" + Glob.Instration;
                     Glob.CurSegmentNum = int.Parse(getCout.ToString());
                     textBoxEx1.ReadOnly = false;
-                    //richTextBox2.MaxLength = richTextBox1.TextLength; //设置最大输入字符数量
 
                     if (Glob.SpeedControl > 0)
                     {   //* 找到新文段时关闭测速
@@ -4431,7 +4432,7 @@ namespace WindowsFormsApplication2
             int inputL = textBoxEx1.TextLength;
             if (inputL > Glob.StartTextLen)
             {
-                int len = richTextBox2.TextLength - Glob.StartTextLen;
+                int len = textBoxEx1.TextLength - Glob.StartTextLen;
                 double speed2 = (double)len * 60 / Glob.TypeUseTime;
                 if (CategoryHandler.IsEn(Glob.Category))
                 {
@@ -5285,29 +5286,28 @@ namespace WindowsFormsApplication2
         /// </summary>
         /// <param name="word"></param>
         /// <param name="flag"></param>
+        private static (string Code, int FindIndex) GetWordCode(string word)
+        {
+            if (!Glob.AllWordDic.TryGetValue(word, out string code))
+                return ("", 1);
+
+            int findIndex = 1;
+            if (Glob.AllCodeDic.TryGetValue(code, out string firstWord) && firstWord != word)
+            {
+                int duplicateIndex = 2;
+                while (Glob.AllCodeDic.TryGetValue(code + duplicateIndex.ToString(), out string duplicateWord) &&
+                    duplicateWord != word)
+                {
+                    duplicateIndex++;
+                }
+                findIndex = duplicateIndex;
+            }
+            return (code, findIndex);
+        }
+
         public void CodeCheck(string word, int flag)
         {
-            string bm = word;
-            int findit = 0;
-            if (!Glob.AllWordDic.ContainsKey(word))
-            { // 不在码表中，可能是符号或未收录的字等
-                findit = 1;
-                bm = "";
-            }
-            else
-            {
-                findit = 1;
-                bm = Glob.AllWordDic[word];
-                if (Glob.AllCodeDic.ContainsKey(bm) && Glob.AllCodeDic[bm] != word)
-                {
-                    int tempIndex = 2;
-                    while (Glob.AllCodeDic.ContainsKey(bm + tempIndex.ToString()) && Glob.AllCodeDic[bm + tempIndex.ToString()] != word)
-                    {
-                        tempIndex++;
-                    }
-                    findit = tempIndex;
-                }
-            }
+            (string bm, int findit) = GetWordCode(word);
 
             if (flag == 0)
             {
@@ -5350,17 +5350,18 @@ namespace WindowsFormsApplication2
                 {
                     var bmp = new Bitmap(lblBmTips.Width, lblBmTips.Height);
                     using (Graphics g = Graphics.FromImage(bmp))
+                    using (var solidBrush = new SolidBrush(Theme.SecondFC))
+                    using (var ziFont = new Font("宋体", 9f))
+                    using (var basePen = new Pen(Theme.ThemeBG))
+                    using (var fillBrush = new SolidBrush(this.richTextBox1.GetColor(flag)))
+                    using (var bmFont = new Font("宋体", 9f))
                     {
                         int splitLineWidth = (bmp.Width - bmp.Height) * 2 / 5; //字起点
                         int splitLineWidth2 = (bmp.Width - splitLineWidth - bmp.Height) * 3 / 5;
-                        var solidBrush = new SolidBrush(Theme.SecondFC);
-                        var ziFont = new Font("宋体", 9f);
-                        var BasePen = new Pen(Theme.ThemeBG);
-                        g.DrawLine(BasePen, bmp.Height + 3, 0, bmp.Height + 3, bmp.Height);
-                        g.DrawLine(BasePen, splitLineWidth + bmp.Height, 0, splitLineWidth + bmp.Height, bmp.Height);
+                        g.DrawLine(basePen, bmp.Height + 3, 0, bmp.Height + 3, bmp.Height);
+                        g.DrawLine(basePen, splitLineWidth + bmp.Height, 0, splitLineWidth + bmp.Height, bmp.Height);
                         //画重
                         int radius = bmp.Height - 2;
-                        var fillBrush = new SolidBrush(this.richTextBox1.GetColor(flag));
                         g.FillPie(fillBrush, 2, 1, radius, radius, -360, 360);
                         g.FillRectangle(fillBrush, 1, 1, bmp.Height + 1, bmp.Height - 2);
                         //画字
@@ -5368,22 +5369,21 @@ namespace WindowsFormsApplication2
                         g.DrawString(zi, ziFont, solidBrush, splitLineWidth / 2 - ziSizeF.Width / 2 + bmp.Height + 2,
                                      bmp.Height / 2 - ziSizeF.Height / 2 + 1);
                         //画编码
-                        var bmFont = new Font("宋体", 9f);
                         SizeF bmSizeF = g.MeasureString(bm, bmFont);
                         g.DrawString(bm, bmFont, solidBrush,
                                      splitLineWidth2 / 2 - bmSizeF.Width / 2 + bmp.Height + splitLineWidth + 3,
                                      bmp.Height / 2 - bmSizeF.Height / 2 + 1);
                     }
-                    lblBmTips.Image = bmp;
+                    ReplacePictureBoxImage(lblBmTips, bmp);
 
                     if (this.picBmTips.Checked && Glob.BmAlls.Count > 0)
                     {
                         int count = Glob.BmAlls.Count;
+                        int now = this.textBoxEx1.TextLength;
                         string str = "";
                         for (int index = 0; index < count; index++)
                         {
                             BmAll bmAll = Glob.BmAlls[index];
-                            int now = this.textBoxEx1.TextLength;
                             if (now == bmAll.起点)
                             {
                                 //显示当前
@@ -5410,9 +5410,30 @@ namespace WindowsFormsApplication2
         /// </summary>
         private void QueryWordCode()
         {
-            var s =
-                Glob.TypeText[Glob.TypeTextCount == Glob.TextLen ? Glob.TypeTextCount - 1 : Glob.TypeTextCount].ToString();
-            Task.Run(() => CodeCheck(s, 0));
+            int textIndex = Glob.TypeTextCount == Glob.TextLen ? Glob.TypeTextCount - 1 : Glob.TypeTextCount;
+            if (textIndex < 0 || textIndex >= Glob.TypeText.Length) return;
+
+            string word = Glob.TypeText[textIndex].ToString();
+            var (code, findIndex) = GetWordCode(word);
+            pendingBmTipCode = code;
+            pendingBmTipWord = word;
+            pendingBmTipIndex = findIndex - 1;
+            if (bmTipUpdateQueued || IsDisposed || Disposing || !IsHandleCreated) return;
+
+            bmTipUpdateQueued = true;
+            try
+            {
+                BeginInvoke(new MethodInvoker(() =>
+                {
+                    bmTipUpdateQueued = false;
+                    if (IsDisposed || Disposing) return;
+                    ShowBmTips(pendingBmTipWord, pendingBmTipCode, pendingBmTipIndex);
+                }));
+            }
+            catch (InvalidOperationException)
+            {
+                bmTipUpdateQueued = false;
+            }
         }
 
         private void 查询当前编码ToolStripMenuItem2_Click(object sender, EventArgs e)
