@@ -79,6 +79,26 @@ namespace WindowsFormsApplication2.Storage
         }
 
         /// <summary>
+        /// 将一段成绩的多条关联记录作为一个事务写入，避免逐条提交造成 UI 阻塞。
+        /// </summary>
+        public void ExecuteInTransaction(Action write)
+        {
+            using (var transaction = this.cn.BeginTransaction())
+            {
+                this.cmd.Transaction = transaction;
+                try
+                {
+                    write();
+                    transaction.Commit();
+                }
+                finally
+                {
+                    this.cmd.Transaction = null;
+                }
+            }
+        }
+
+        /// <summary>
         /// 插入成绩
         /// </summary>
         /// <param name="score_time"></param>
@@ -115,6 +135,7 @@ namespace WindowsFormsApplication2.Storage
         {
             using (var command = new SQLiteCommand("INSERT OR REPLACE INTO type_detail(score_time,target_text,typed_text,type_report,wrong_chars) VALUES(@time,@target,@typed,@report,@wrong)", this.cn))
             {
+                command.Transaction = this.cmd.Transaction;
                 command.Parameters.AddWithValue("@time", scoreTime.Replace(" ", "T"));
                 command.Parameters.AddWithValue("@target", targetText ?? "");
                 command.Parameters.AddWithValue("@typed", typedText ?? "");

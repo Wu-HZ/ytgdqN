@@ -2,9 +2,11 @@ using System;
 using System.Drawing;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.IO;
 using System.Windows.Forms;
 using WindowsFormsApplication2;
 using WindowsFormsApplication2.Difficulty;
+using WindowsFormsApplication2.Storage;
 
 internal static class Program
 {
@@ -12,6 +14,7 @@ internal static class Program
     private static void Main()
     {
         Application.EnableVisualStyles();
+        VerifyScoreTransaction();
         var host = RuntimeHelpers.GetUninitializedObject(typeof(Form1));
         typeof(Form1).GetField("DiffDict", BindingFlags.Instance | BindingFlags.Public)
             .SetValue(host, new DifficultyDict());
@@ -86,6 +89,40 @@ internal static class Program
             $"missing code lookup mismatch: {missing.Code}/{missing.FindIndex}");
 
         Console.WriteLine("Real NewSend UI tests passed (segment switching, ebook labels, and code lookup)");
+    }
+
+    private static void VerifyScoreTransaction()
+    {
+        string folder = Path.Combine(Path.GetTempPath(), "RainTyping-ScoreTransactionTests-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(folder);
+        string originalFolder = Database.folderName;
+        Database.folderName = folder;
+        ScoreData score = null;
+        try
+        {
+            score = new ScoreData("score-transaction-test");
+            score.Init();
+            string scoreTime = DateTime.Now.ToString("s");
+            long segmentId = 0;
+            score.ExecuteInTransaction(() =>
+            {
+                segmentId = score.InsertSegment("测试目标", "test-check");
+                score.InsertScore(scoreTime, 1, "60.00", 5, 2, 2, 0, 0, 0, 0, 0, 0, 100, 100, 50, 10, 0, 0, "00:00:10", segmentId, "test", "test", 1, 0, "test-session");
+                score.InsertTypingDetail(scoreTime, "测试目标", "测试目标", "[]", "[]");
+                score.InsertAdvanced(scoreTime, "", "", "[]", "[]");
+            });
+
+            var detail = score.GetTypingDetail(scoreTime);
+            Check(detail != null && detail.TargetText == "测试目标", "transaction should commit typing detail");
+            Check(score.GetScoreFromDate(DateTime.Now.Date, 0, 10).Rows.Count == 1,
+                "transaction should commit score row");
+        }
+        finally
+        {
+            score?.CloseDatabase();
+            Database.folderName = originalFolder;
+            try { Directory.Delete(folder, true); } catch { }
+        }
     }
 
     private static object Field(Type type, object target, string name) =>
