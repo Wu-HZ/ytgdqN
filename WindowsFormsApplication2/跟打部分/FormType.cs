@@ -94,10 +94,11 @@ namespace WindowsFormsApplication2
         private const int TypingPerfResetTyping = 23;
         private const int TypingPerfCleanBeforeSend = 24;
         private const int TypingPerfGetInfo = 25;
-        private readonly long[] typingPerfTicks = new long[26];
-        private readonly long[] typingPerfMaxTicks = new long[26];
-        private readonly int[] typingPerfCounts = new int[26];
-        private readonly int[] typingPerfSlowCounts = new int[26];
+        private const int TypingPerfPreparedReset = 26;
+        private readonly long[] typingPerfTicks = new long[27];
+        private readonly long[] typingPerfMaxTicks = new long[27];
+        private readonly int[] typingPerfCounts = new int[27];
+        private readonly int[] typingPerfSlowCounts = new int[27];
         private long typingPerfLastFlush;
         private int typingPerfMapPaints;
         private int typingPerfTextPaints;
@@ -2343,7 +2344,7 @@ namespace WindowsFormsApplication2
         }
 
         private static readonly string[] TypingPerfPhaseNames =
-            { "input", "color", "map", "progress", "point-marker", "process", "code-query", "snapshot", "layout", "analysis", "completion", "book-save", "report-snapshot", "score-grid", "clipboard", "score-db", "score-cache", "score-output", "pre-grid", "post-grid", "auto-next", "advance-book", "send-segment", "reset-typing", "clean-before-send", "get-info" };
+            { "input", "color", "map", "progress", "point-marker", "process", "code-query", "snapshot", "layout", "analysis", "completion", "book-save", "report-snapshot", "score-grid", "clipboard", "score-db", "score-cache", "score-output", "pre-grid", "post-grid", "auto-next", "advance-book", "send-segment", "reset-typing", "clean-before-send", "get-info", "prepared-reset" };
 
         internal static bool IsTypingPerfEnabled => TypingPerfTraceEnabled;
 
@@ -4376,6 +4377,21 @@ namespace WindowsFormsApplication2
             Glob.nowStart = DateTime.Now;
             this.lblAutoReType.Text = "0";
 
+            RestoreSpeedPointMarks();
+        }
+
+        private void ResetAfterPreparedSend()
+        {
+            timer1.Enabled = false;
+            timer3.Enabled = false;
+            timer5.Stop();
+            Glob.nowStart = DateTime.Now;
+            this.lblAutoReType.Text = "0";
+            RestoreSpeedPointMarks();
+        }
+
+        private void RestoreSpeedPointMarks()
+        {
             if (Glob.SpeedPointCount > 0)
             {
                 for (int i = 0; i < Glob.SpeedPointCount; i++)
@@ -4394,7 +4410,6 @@ namespace WindowsFormsApplication2
             {
                 this.lblspeedcheck.Text = "时间";
             }
-            //GC.Collect();
         }
 
         private static List<TypeDate> CloneTypeReport(List<TypeDate> source)
@@ -5886,6 +5901,7 @@ namespace WindowsFormsApplication2
                     NewSendText.周期计数 = NewSendText.周期;
                 }
 
+                int sentCountBeforeNext = NewSendText.已发段数;
                 long sendSegmentStarted = TypingPerfTraceEnabled ? Stopwatch.GetTimestamp() : 0;
                 if (Glob.SendCursor < 0)
                 { // 还存在未发文的旧序列
@@ -5910,7 +5926,10 @@ namespace WindowsFormsApplication2
                 }
 
                 long resetTypingStarted = TypingPerfTraceEnabled ? Stopwatch.GetTimestamp() : 0;
-                F3();
+                if (NewSendText.已发段数 > sentCountBeforeNext)
+                    ResetAfterPreparedSend();
+                else
+                    F3();
                 if (TypingPerfTraceEnabled) RecordTypingPerf(TypingPerfResetTyping, resetTypingStarted);
             }
         }
