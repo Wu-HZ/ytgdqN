@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Threading;
 using System.Linq;
 using System.Text;
 using System.Windows.Forms;
@@ -21,6 +22,9 @@ namespace WindowsFormsApplication2
         /// - 防止画线时已开始跟打导致颜色异常
         /// </summary>
         private int currentIndex = 0;
+        private const int WM_PAINT = 0x000F;
+        private long pendingTypingColorChangeTimestamp;
+        private long pendingNewTargetTimestamp;
         /// <summary>
         /// 对照区正确字的背景色
         /// </summary>
@@ -38,6 +42,36 @@ namespace WindowsFormsApplication2
         public RichEditBoxLineRender()
         {
             InitializeComponent();
+        }
+
+        internal void MarkTypingColorChange()
+        {
+            if (Form1.IsTypingPerfEnabled)
+                Interlocked.Exchange(ref pendingTypingColorChangeTimestamp, Stopwatch.GetTimestamp());
+        }
+
+        internal void MarkNewTargetReady()
+        {
+            if (Form1.IsTypingPerfEnabled)
+                Interlocked.Exchange(ref pendingNewTargetTimestamp, Stopwatch.GetTimestamp());
+        }
+
+        protected override void WndProc(ref Message m)
+        {
+            if (m.Msg != WM_PAINT || !Form1.IsTypingPerfEnabled)
+            {
+                base.WndProc(ref m);
+                return;
+            }
+
+            long paintStarted = Stopwatch.GetTimestamp();
+            long colorChangedAt = Interlocked.Exchange(ref pendingTypingColorChangeTimestamp, 0);
+            long newTargetAt = Interlocked.Exchange(ref pendingNewTargetTimestamp, 0);
+            base.WndProc(ref m);
+            long paintFinished = Stopwatch.GetTimestamp();
+            long colorDelay = colorChangedAt > 0 ? Math.Max(0, paintStarted - colorChangedAt) : 0;
+            long targetDelay = newTargetAt > 0 ? Math.Max(0, paintStarted - newTargetAt) : 0;
+            Form1.RecordRichTextNativePaint(paintFinished - paintStarted, colorDelay, targetDelay);
         }
 
         public RichEditBoxLineRender(IContainer container)

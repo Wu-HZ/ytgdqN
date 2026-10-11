@@ -59,6 +59,15 @@ namespace WindowsFormsApplication2
         private bool cursorHidden = false;
         private static readonly bool TypingPerfTraceEnabled =
             Environment.GetEnvironmentVariable("YTGDQN_TYPING_TRACE") == "1";
+        private static long typingPerfNativePaintCount;
+        private static long typingPerfNativePaintTicks;
+        private static long typingPerfNativePaintMaxTicks;
+        private static long typingPerfColorPaintCount;
+        private static long typingPerfColorPaintDelayTicks;
+        private static long typingPerfColorPaintMaxDelayTicks;
+        private static long typingPerfTargetPaintCount;
+        private static long typingPerfTargetPaintDelayTicks;
+        private static long typingPerfTargetPaintMaxDelayTicks;
         private const int TypingPerfInput = 0;
         private const int TypingPerfColor = 1;
         private const int TypingPerfMap = 2;
@@ -83,10 +92,12 @@ namespace WindowsFormsApplication2
         private const int TypingPerfAdvanceBook = 21;
         private const int TypingPerfSendSegment = 22;
         private const int TypingPerfResetTyping = 23;
-        private readonly long[] typingPerfTicks = new long[24];
-        private readonly long[] typingPerfMaxTicks = new long[24];
-        private readonly int[] typingPerfCounts = new int[24];
-        private readonly int[] typingPerfSlowCounts = new int[24];
+        private const int TypingPerfCleanBeforeSend = 24;
+        private const int TypingPerfGetInfo = 25;
+        private readonly long[] typingPerfTicks = new long[26];
+        private readonly long[] typingPerfMaxTicks = new long[26];
+        private readonly int[] typingPerfCounts = new int[26];
+        private readonly int[] typingPerfSlowCounts = new int[26];
         private long typingPerfLastFlush;
         private int typingPerfMapPaints;
         private int typingPerfTextPaints;
@@ -1470,6 +1481,7 @@ namespace WindowsFormsApplication2
         /// <param name="textAll">跟打区的文本内容</param>
         private void CleanBeforeSending(string textAll)
         {
+            long cleanStarted = TypingPerfTraceEnabled ? Stopwatch.GetTimestamp() : 0;
             TrackBookSegment(textAll);
             this.textBoxEx1.Clear(); // 清空跟打区
             this.richTextBox1.SelectAll();
@@ -1482,7 +1494,10 @@ namespace WindowsFormsApplication2
             Glob.CurSegmentNum++;
             this.lblDuan.Text = "第" + Glob.CurSegmentNum.ToString() + "段";
             GetInfo(); // 获取信息
+            if (TypingPerfTraceEnabled) richTextBox1.MarkNewTargetReady();
+            richTextBox1.Update();
             NewSendText.已发段数++;
+            if (TypingPerfTraceEnabled) RecordTypingPerf(TypingPerfCleanBeforeSend, cleanStarted);
         }
 
         /// <summary>
@@ -2204,7 +2219,7 @@ namespace WindowsFormsApplication2
                 KH.Start();
             }
             catch { }
-            System.GC.Collect();
+            // 避免每次清理状态时强制完整 GC；短生命周期对象交由运行时按内存压力回收。
         }
 
         #region 跟打过程
@@ -2249,12 +2264,19 @@ namespace WindowsFormsApplication2
             }
 
             bool inWrongRun = false;
+            bool colorRunWrong = typedText[start] != targetText[start];
+            int colorRunStart = start;
             for (int i = start; i < end; i++)
             {
                 bool wrong = typedText[i] != targetText[i];
-                richTextBox1.SelectionStart = i;
-                richTextBox1.SelectionLength = 1;
-                richTextBox1.SelectionBackColor = wrong ? Theme.FalseBGColor : Theme.RightBGColor;
+                if (i > colorRunStart && wrong != colorRunWrong)
+                {
+                    richTextBox1.SelectionStart = colorRunStart;
+                    richTextBox1.SelectionLength = i - colorRunStart;
+                    richTextBox1.SelectionBackColor = colorRunWrong ? Theme.FalseBGColor : Theme.RightBGColor;
+                    colorRunStart = i;
+                    colorRunWrong = wrong;
+                }
                 if (wrong)
                 {
                     if (!inWrongRun)
@@ -2278,6 +2300,9 @@ namespace WindowsFormsApplication2
                     inWrongRun = false;
                 }
             }
+            richTextBox1.SelectionStart = colorRunStart;
+            richTextBox1.SelectionLength = end - colorRunStart;
+            richTextBox1.SelectionBackColor = colorRunWrong ? Theme.FalseBGColor : Theme.RightBGColor;
 
             if (this.pendingImeBackspace)
             {
@@ -2297,6 +2322,9 @@ namespace WindowsFormsApplication2
                 this.pendingImeBackspace = false;
                 this.pendingImeBackspaceIndex = -1;
             }
+            if (TypingPerfTraceEnabled) richTextBox1.MarkTypingColorChange();
+            // 颜色变化在段末结算/自动续段前立即落到屏幕，避免 WM_PAINT 排队到整段处理结束。
+            richTextBox1.Update();
             if (TypingPerfTraceEnabled) RecordTypingPerf(TypingPerfColor, perfStarted);
         }
 
@@ -2315,7 +2343,40 @@ namespace WindowsFormsApplication2
         }
 
         private static readonly string[] TypingPerfPhaseNames =
-            { "input", "color", "map", "progress", "point-marker", "process", "code-query", "snapshot", "layout", "analysis", "completion", "book-save", "report-snapshot", "score-grid", "clipboard", "score-db", "score-cache", "score-output", "pre-grid", "post-grid", "auto-next", "advance-book", "send-segment", "reset-typing" };
+            { "input", "color", "map", "progress", "point-marker", "process", "code-query", "snapshot", "layout", "analysis", "completion", "book-save", "report-snapshot", "score-grid", "clipboard", "score-db", "score-cache", "score-output", "pre-grid", "post-grid", "auto-next", "advance-book", "send-segment", "reset-typing", "clean-before-send", "get-info" };
+
+        internal static bool IsTypingPerfEnabled => TypingPerfTraceEnabled;
+
+        internal static void RecordRichTextNativePaint(long paintTicks, long colorDelayTicks, long targetDelayTicks)
+        {
+            if (!TypingPerfTraceEnabled) return;
+            Interlocked.Increment(ref typingPerfNativePaintCount);
+            Interlocked.Add(ref typingPerfNativePaintTicks, paintTicks);
+            UpdateTypingPerfMaximum(ref typingPerfNativePaintMaxTicks, paintTicks);
+            if (colorDelayTicks > 0)
+            {
+                Interlocked.Increment(ref typingPerfColorPaintCount);
+                Interlocked.Add(ref typingPerfColorPaintDelayTicks, colorDelayTicks);
+                UpdateTypingPerfMaximum(ref typingPerfColorPaintMaxDelayTicks, colorDelayTicks);
+            }
+            if (targetDelayTicks > 0)
+            {
+                Interlocked.Increment(ref typingPerfTargetPaintCount);
+                Interlocked.Add(ref typingPerfTargetPaintDelayTicks, targetDelayTicks);
+                UpdateTypingPerfMaximum(ref typingPerfTargetPaintMaxDelayTicks, targetDelayTicks);
+            }
+        }
+
+        private static void UpdateTypingPerfMaximum(ref long maximum, long value)
+        {
+            long observed = Interlocked.Read(ref maximum);
+            while (value > observed)
+            {
+                long previous = Interlocked.CompareExchange(ref maximum, value, observed);
+                if (previous == observed) return;
+                observed = previous;
+            }
+        }
 
         private void RecordTypingPerf(int phase, long started)
         {
@@ -2355,7 +2416,25 @@ namespace WindowsFormsApplication2
             report.Append(" paints(map=").Append(typingPerfMapPaints)
                 .Append(",text=").Append(typingPerfTextPaints)
                 .Append(",bar=").Append(typingPerfBarPaints)
-                .Append(",splitter=").Append(typingPerfSplitterPaints).AppendLine(")");
+                .Append(",splitter=").Append(typingPerfSplitterPaints).Append(')');
+            long nativePaintCount = Interlocked.Exchange(ref typingPerfNativePaintCount, 0);
+            long nativePaintTicks = Interlocked.Exchange(ref typingPerfNativePaintTicks, 0);
+            long nativePaintMaxTicks = Interlocked.Exchange(ref typingPerfNativePaintMaxTicks, 0);
+            long colorPaintCount = Interlocked.Exchange(ref typingPerfColorPaintCount, 0);
+            long colorPaintDelayTicks = Interlocked.Exchange(ref typingPerfColorPaintDelayTicks, 0);
+            long colorPaintMaxDelayTicks = Interlocked.Exchange(ref typingPerfColorPaintMaxDelayTicks, 0);
+            long targetPaintCount = Interlocked.Exchange(ref typingPerfTargetPaintCount, 0);
+            long targetPaintDelayTicks = Interlocked.Exchange(ref typingPerfTargetPaintDelayTicks, 0);
+            long targetPaintMaxDelayTicks = Interlocked.Exchange(ref typingPerfTargetPaintMaxDelayTicks, 0);
+            report.Append(" richPaint(n=").Append(nativePaintCount)
+                .Append(",avgMs=").Append(nativePaintCount == 0 ? 0 : nativePaintTicks * 1000.0 / Stopwatch.Frequency / nativePaintCount)
+                .Append(",maxMs=").Append(nativePaintMaxTicks * 1000.0 / Stopwatch.Frequency)
+                .Append(",colorDelayN=").Append(colorPaintCount)
+                .Append(",colorDelayAvgMs=").Append(colorPaintCount == 0 ? 0 : colorPaintDelayTicks * 1000.0 / Stopwatch.Frequency / colorPaintCount)
+                .Append(",colorDelayMaxMs=").Append(colorPaintMaxDelayTicks * 1000.0 / Stopwatch.Frequency)
+                .Append(",targetPaintN=").Append(targetPaintCount)
+                .Append(",targetDelayAvgMs=").Append(targetPaintCount == 0 ? 0 : targetPaintDelayTicks * 1000.0 / Stopwatch.Frequency / targetPaintCount)
+                .Append(",targetDelayMaxMs=").Append(targetPaintMaxDelayTicks * 1000.0 / Stopwatch.Frequency).AppendLine(")");
 
             try
             {
@@ -4359,6 +4438,7 @@ namespace WindowsFormsApplication2
         /// </summary>
         public void GetInfo()
         {
+            long getInfoStarted = TypingPerfTraceEnabled ? Stopwatch.GetTimestamp() : 0;
             if (Glob.autoReplaceBiaodian)
             { //* 标点替换
                 this.richTextBox1.Text = ReText(this.richTextBox1.Text);
@@ -4431,6 +4511,7 @@ namespace WindowsFormsApplication2
                     Glob.文段类型 = false;
                 }
             }
+            if (TypingPerfTraceEnabled) RecordTypingPerf(TypingPerfGetInfo, getInfoStarted);
         }
         #endregion
 

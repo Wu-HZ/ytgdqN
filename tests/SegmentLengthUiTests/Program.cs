@@ -14,6 +14,7 @@ internal static class Program
     private static void Main()
     {
         Application.EnableVisualStyles();
+        VerifyTypingColors();
         VerifyScoreTransaction();
         var host = RuntimeHelpers.GetUninitializedObject(typeof(Form1));
         typeof(Form1).GetField("DiffDict", BindingFlags.Instance | BindingFlags.Public)
@@ -89,6 +90,40 @@ internal static class Program
             $"missing code lookup mismatch: {missing.Code}/{missing.FindIndex}");
 
         Console.WriteLine("Real NewSend UI tests passed (segment switching, ebook labels, and code lookup)");
+    }
+
+    private static void VerifyTypingColors()
+    {
+        using var hostWindow = new Form { Opacity = 0, ShowInTaskbar = false };
+        using var richTextBox = new RichEditBoxLineRender { Text = "abcd" };
+        hostWindow.Controls.Add(richTextBox);
+        hostWindow.Show();
+        Application.DoEvents();
+
+        var form = RuntimeHelpers.GetUninitializedObject(typeof(Form1));
+        typeof(Form1).GetField("richTextBox1", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+            .SetValue(form, richTextBox);
+        Glob.FWords.Clear();
+        Glob.WrongCharHistory.Clear();
+        var updateErrors = typeof(Form1).GetMethod("UpdateTypingErrors", BindingFlags.Instance | BindingFlags.NonPublic);
+        updateErrors.Invoke(form, new object[] { 0, 4, "abxd", "abcd" });
+        CheckColor(richTextBox, 0, Theme.RightBGColor);
+        CheckColor(richTextBox, 1, Theme.RightBGColor);
+        CheckColor(richTextBox, 2, Theme.FalseBGColor);
+        CheckColor(richTextBox, 3, Theme.RightBGColor);
+
+        updateErrors.Invoke(form, new object[] { 0, 4, "abcd", "abcd" });
+        for (int i = 0; i < 4; i++) CheckColor(richTextBox, i, Theme.RightBGColor);
+        Glob.FWords.Clear();
+        Glob.WrongCharHistory.Clear();
+    }
+
+    private static void CheckColor(RichTextBox richTextBox, int index, Color expected)
+    {
+        richTextBox.SelectionStart = index;
+        richTextBox.SelectionLength = 1;
+        Check(richTextBox.SelectionBackColor.ToArgb() == expected.ToArgb(),
+            $"typing color mismatch at {index}: {richTextBox.SelectionBackColor} vs {expected}");
     }
 
     private static void VerifyScoreTransaction()
