@@ -68,6 +68,7 @@ namespace WindowsFormsApplication2
         private static long typingPerfTargetPaintCount;
         private static long typingPerfTargetPaintDelayTicks;
         private static long typingPerfTargetPaintMaxDelayTicks;
+        private static readonly object TypingPerfLogLock = new object();
         private const int TypingPerfInput = 0;
         private const int TypingPerfColor = 1;
         private const int TypingPerfMap = 2;
@@ -95,10 +96,17 @@ namespace WindowsFormsApplication2
         private const int TypingPerfCleanBeforeSend = 24;
         private const int TypingPerfGetInfo = 25;
         private const int TypingPerfPreparedReset = 26;
-        private readonly long[] typingPerfTicks = new long[27];
-        private readonly long[] typingPerfMaxTicks = new long[27];
-        private readonly int[] typingPerfCounts = new int[27];
-        private readonly int[] typingPerfSlowCounts = new int[27];
+        private const int TypingPerfCleanTarget = 27;
+        private const int TypingPerfResetValues = 28;
+        private const int TypingPerfResetView = 29;
+        private const int TypingPerfFinishTarget = 30;
+        private const int TypingPerfWordQueue = 31;
+        private const int TypingPerfWordAnalysis = 32;
+        private const int TypingPerfCodeFinalize = 33;
+        private readonly long[] typingPerfTicks = new long[34];
+        private readonly long[] typingPerfMaxTicks = new long[34];
+        private readonly int[] typingPerfCounts = new int[34];
+        private readonly int[] typingPerfSlowCounts = new int[34];
         private long typingPerfLastFlush;
         private int typingPerfMapPaints;
         private int typingPerfTextPaints;
@@ -237,6 +245,7 @@ namespace WindowsFormsApplication2
         public Form1()
         {
             InitializeComponent();
+            this.FormClosing += Form1_FormClosing;
             this.picBar.Paint += PicBar_Paint;
             this.splitContainer1.Paint += SplitContainer1_Paint;
             if (TypingPerfTraceEnabled)
@@ -272,7 +281,7 @@ namespace WindowsFormsApplication2
         }
 
         /// <summary>
-        /// 实时成绩区只按可见行自适应，避免段数增多后每次结算都扫描整表。
+        /// 实时成绩区首次结算时按可见行确定列宽，之后只按新行扩宽，避免每段重复测量。
         /// </summary>
         private void ConfigureRealtimeScoreGrid()
         {
@@ -289,6 +298,40 @@ namespace WindowsFormsApplication2
 
             this.标题.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
             this.标题.MinimumWidth = 140;
+        }
+
+        private void FreezeRealtimeScoreGridAutoSizing()
+        {
+            foreach (DataGridViewColumn column in this.dataGridView1.Columns)
+            {
+                if (column.AutoSizeMode != DataGridViewAutoSizeColumnMode.Fill)
+                    column.AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
+            }
+            scoreGridAutoSizingFrozen = true;
+        }
+
+        private void ExpandRealtimeScoreGridForRecentRows()
+        {
+            int firstRow = Math.Max(0, this.dataGridView1.Rows.Count - 3);
+            for (int columnIndex = 0; columnIndex < this.dataGridView1.Columns.Count; columnIndex++)
+            {
+                DataGridViewColumn column = this.dataGridView1.Columns[columnIndex];
+                if (!column.Visible || column.AutoSizeMode == DataGridViewAutoSizeColumnMode.Fill) continue;
+
+                int requiredWidth = column.Width;
+                for (int rowIndex = firstRow; rowIndex < this.dataGridView1.Rows.Count; rowIndex++)
+                {
+                    DataGridViewCell cell = this.dataGridView1.Rows[rowIndex].Cells[columnIndex];
+                    if (cell.Value == null) continue;
+                    string text = Convert.ToString(cell.Value);
+                    if (string.IsNullOrEmpty(text)) continue;
+                    var style = cell.InheritedStyle;
+                    int textWidth = TextRenderer.MeasureText(text, style.Font ?? this.dataGridView1.Font,
+                        new Size(int.MaxValue, int.MaxValue), TextFormatFlags.NoPadding).Width;
+                    requiredWidth = Math.Max(requiredWidth, textWidth + style.Padding.Horizontal + 8);
+                }
+                if (requiredWidth > column.Width) column.Width = requiredWidth;
+            }
         }
 
         private void Form1_Load(object sender, EventArgs e)
@@ -1483,21 +1526,27 @@ namespace WindowsFormsApplication2
         private void CleanBeforeSending(string textAll)
         {
             long cleanStarted = TypingPerfTraceEnabled ? Stopwatch.GetTimestamp() : 0;
+            long phaseStarted = TypingPerfTraceEnabled ? Stopwatch.GetTimestamp() : 0;
             TrackBookSegment(textAll);
             this.textBoxEx1.Clear(); // 清空跟打区
-            this.richTextBox1.SelectAll();
-            this.richTextBox1.SelectionBackColor = Theme.R1Back;
             this.richTextBox1.Text = textAll;
+            if (TypingPerfTraceEnabled) RecordTypingPerf(TypingPerfCleanTarget, phaseStarted);
+            phaseStarted = TypingPerfTraceEnabled ? Stopwatch.GetTimestamp() : 0;
             Initialize(1);
+            if (TypingPerfTraceEnabled) RecordTypingPerf(TypingPerfResetValues, phaseStarted);
+            phaseStarted = TypingPerfTraceEnabled ? Stopwatch.GetTimestamp() : 0;
             Initialize(2);
+            if (TypingPerfTraceEnabled) RecordTypingPerf(TypingPerfResetView, phaseStarted);
             this.textBoxEx1.ReadOnly = false; // 激活跟打区
             this.textBoxEx1.Select();
             Glob.CurSegmentNum++;
             this.lblDuan.Text = "第" + Glob.CurSegmentNum.ToString() + "段";
             GetInfo(); // 获取信息
             if (TypingPerfTraceEnabled) richTextBox1.MarkNewTargetReady();
+            phaseStarted = TypingPerfTraceEnabled ? Stopwatch.GetTimestamp() : 0;
             richTextBox1.Update();
             NewSendText.已发段数++;
+            if (TypingPerfTraceEnabled) RecordTypingPerf(TypingPerfFinishTarget, phaseStarted);
             if (TypingPerfTraceEnabled) RecordTypingPerf(TypingPerfCleanBeforeSend, cleanStarted);
         }
 
@@ -1508,8 +1557,6 @@ namespace WindowsFormsApplication2
         private void CleanBeforeReverseSending(string textAll)
         {
             this.textBoxEx1.Clear(); // 清空跟打区
-            this.richTextBox1.SelectAll();
-            this.richTextBox1.SelectionBackColor = Theme.R1Back;
             this.richTextBox1.Text = textAll;
             Initialize(1);
             Initialize(2);
@@ -1851,7 +1898,7 @@ namespace WindowsFormsApplication2
 
                 this.textBoxEx1.TextChanged += new System.EventHandler(textBoxEx1_TextChanged);
                 发文状态后处理();
-                this.Activate();
+                if (!this.ContainsFocus) this.Activate();
             }
         }
 
@@ -2205,10 +2252,7 @@ namespace WindowsFormsApplication2
                 //编码显示归零
                 PicSetBmTips("", "", 0);
                 //拆分条进度
-                using (Graphics g = this.splitContainer1.CreateGraphics())
-                {
-                    g.Clear(Theme.ThemeColorBG);
-                }
+                this.splitContainer1.Invalidate();
                 if (Glob.IsPointIt)
                 {
                     this.richTextBox1.SetCurIndex(0);
@@ -2245,8 +2289,12 @@ namespace WindowsFormsApplication2
         private int 跟打地图步进 = 0;
         private bool pendingImeBackspace = false;
         private int pendingImeBackspaceIndex = -1;
+        private System.Windows.Forms.Timer typingCompletionTimer;
+        private Action pendingTypingCompletion;
+        private bool formClosing;
+        private bool scoreGridAutoSizingFrozen;
 
-        private void UpdateTypingErrors(int start, int end, string typedText, string targetText)
+        private void UpdateTypingErrors(int start, int end, string typedText, string targetText, bool flushPaintImmediately = true)
         {
             start = Math.Max(0, start);
             end = Math.Min(Math.Min(end, typedText.Length), targetText.Length);
@@ -2324,8 +2372,8 @@ namespace WindowsFormsApplication2
                 this.pendingImeBackspaceIndex = -1;
             }
             if (TypingPerfTraceEnabled) richTextBox1.MarkTypingColorChange();
-            // 颜色变化在段末结算/自动续段前立即落到屏幕，避免 WM_PAINT 排队到整段处理结束。
-            richTextBox1.Update();
+            // 段末让消息循环先绘制最终输入，再进入耗时结算；普通字符保持即时颜色反馈。
+            if (flushPaintImmediately) richTextBox1.Update();
             if (TypingPerfTraceEnabled) RecordTypingPerf(TypingPerfColor, perfStarted);
         }
 
@@ -2344,7 +2392,7 @@ namespace WindowsFormsApplication2
         }
 
         private static readonly string[] TypingPerfPhaseNames =
-            { "input", "color", "map", "progress", "point-marker", "process", "code-query", "snapshot", "layout", "analysis", "completion", "book-save", "report-snapshot", "score-grid", "clipboard", "score-db", "score-cache", "score-output", "pre-grid", "post-grid", "auto-next", "advance-book", "send-segment", "reset-typing", "clean-before-send", "get-info", "prepared-reset" };
+            { "input", "color", "map", "progress", "point-marker", "process", "code-query", "snapshot", "layout", "analysis", "completion", "book-save", "report-snapshot", "score-grid", "clipboard", "score-db", "score-cache", "score-output", "pre-grid", "post-grid", "auto-next", "advance-book", "send-segment", "reset-typing", "clean-before-send", "get-info", "prepared-reset", "clean-target", "reset-values", "reset-view", "finish-target", "word-queue", "word-analysis", "code-finalize" };
 
         internal static bool IsTypingPerfEnabled => TypingPerfTraceEnabled;
 
@@ -2437,11 +2485,17 @@ namespace WindowsFormsApplication2
                 .Append(",targetDelayAvgMs=").Append(targetPaintCount == 0 ? 0 : targetPaintDelayTicks * 1000.0 / Stopwatch.Frequency / targetPaintCount)
                 .Append(",targetDelayMaxMs=").Append(targetPaintMaxDelayTicks * 1000.0 / Stopwatch.Frequency).AppendLine(")");
 
-            try
+            string logPath = Path.Combine(Path.GetTempPath(), "RainTyping-ui-profile.log");
+            string logContent = report.ToString();
+            ThreadPool.QueueUserWorkItem(_ =>
             {
-                File.AppendAllText(Path.Combine(Path.GetTempPath(), "RainTyping-ui-profile.log"), report.ToString());
-            }
-            catch { }
+                try
+                {
+                    lock (TypingPerfLogLock)
+                        File.AppendAllText(logPath, logContent);
+                }
+                catch { }
+            });
 
             Array.Clear(typingPerfTicks, 0, typingPerfTicks.Length);
             Array.Clear(typingPerfMaxTicks, 0, typingPerfMaxTicks.Length);
@@ -2450,6 +2504,32 @@ namespace WindowsFormsApplication2
             typingPerfMapPaints = typingPerfTextPaints = typingPerfBarPaints = typingPerfSplitterPaints = 0;
             typingPerfMaxTargetChars = typingPerfMaxInputChars = 0;
             typingPerfLastFlush = now;
+        }
+
+        private void ScheduleTypingCompletionAfterPaint(Action completion)
+        {
+            pendingTypingCompletion = completion;
+            typingCompletionTimer?.Stop();
+            typingCompletionTimer?.Dispose();
+            typingCompletionTimer = new System.Windows.Forms.Timer { Interval = 16 };
+            typingCompletionTimer.Tick += (sender, e) => RunPendingTypingCompletion();
+            typingCompletionTimer.Start();
+        }
+
+        private void RunPendingTypingCompletion()
+        {
+            Action completion = pendingTypingCompletion;
+            pendingTypingCompletion = null;
+            typingCompletionTimer?.Stop();
+            typingCompletionTimer?.Dispose();
+            typingCompletionTimer = null;
+            completion?.Invoke();
+        }
+
+        private void Form1_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            formClosing = true;
+            RunPendingTypingCompletion();
         }
 
         private void ProcessTypingTextChanged(object sender, EventArgs e)
@@ -2621,7 +2701,7 @@ namespace WindowsFormsApplication2
                         int Glast = TextLenNow;//当前字数
                         if (Istart == Glast) //当前后面没有 字符的情况。
                         {
-                            this.UpdateTypingErrors(HisSave[0], Glast, TextType, TextAlticle);
+                            this.UpdateTypingErrors(HisSave[0], Glast, TextType, TextAlticle, TextLenNow < TextLen);
                             Glob.Type_Map_Color = Glob.FWords.Count == 0 ? Theme.RightBGColor : Theme.FalseBGColor;
 
                             if (iP >= 2)
@@ -2688,7 +2768,7 @@ namespace WindowsFormsApplication2
                         else
                         { //插入输入的情况
                             // 插入输入时，连带错位的后续红字按一次错误处理。
-                            this.UpdateTypingErrors(Istart - iP, Glast, TextType, TextAlticle);
+                            this.UpdateTypingErrors(Istart - iP, Glast, TextType, TextAlticle, TextLenNow < TextLen);
                         }
 
                         //测速点
@@ -2732,7 +2812,7 @@ namespace WindowsFormsApplication2
                             }
                         }
 
-                        this.UpdateTypingErrors(istart, HisSave[1], TextType, TextAlticle);
+                        this.UpdateTypingErrors(istart, HisSave[1], TextType, TextAlticle, TextLenNow < TextLen);
 
                         //}
                     }
@@ -2751,7 +2831,6 @@ namespace WindowsFormsApplication2
                 if (TextLenNow == TextLen)
                 {
                     long completionStarted = TypingPerfTraceEnabled ? Stopwatch.GetTimestamp() : 0;
-                    long postGridStarted = 0;
                     for (int i = HisSave[0]; i < HisSave[1]; i++)
                     {
                         // 末尾最后三个输入的字符有错字时
@@ -2784,7 +2863,12 @@ namespace WindowsFormsApplication2
                     timer2.Enabled = false;
                     timer3.Enabled = false; //图表
                     timer5.Stop(); //长时间不跟打自动重打
-
+                    bool resumePeriodicTimer = timerTSend.Enabled;
+                    if (resumePeriodicTimer) timerTSend.Stop();
+                    textBoxEx1.ReadOnly = true;
+                    ScheduleTypingCompletionAfterPaint(() =>
+                    {
+                    long postGridStarted = 0;
                     this.lblAutoReType.Text = "0";
                     //已跟打赋值
                     Glob.HaveTypeCount++;//已跟打段数
@@ -3098,6 +3182,10 @@ namespace WindowsFormsApplication2
                         {
                             this.dataGridView1.ResumeLayout(true);
                         }
+                        if (scoreGridAutoSizingFrozen)
+                            ExpandRealtimeScoreGridForRecentRows();
+                        else
+                            FreezeRealtimeScoreGridAutoSizing();
                         if (TypingPerfTraceEnabled) RecordTypingPerf(TypingPerfScoreGrid, scoreGridStarted);
                         postGridStarted = TypingPerfTraceEnabled ? Stopwatch.GetTimestamp() : 0;
 
@@ -3428,11 +3516,14 @@ namespace WindowsFormsApplication2
 
                                     if (isNext)
                                     {
-                                        long autoNextStarted = TypingPerfTraceEnabled ? Stopwatch.GetTimestamp() : 0;
-                                        SendNextFun();
-                                        if (TypingPerfTraceEnabled) RecordTypingPerf(TypingPerfAutoNext, autoNextStarted);
+                                        if (!formClosing)
+                                        {
+                                            long autoNextStarted = TypingPerfTraceEnabled ? Stopwatch.GetTimestamp() : 0;
+                                            SendNextFun();
+                                            if (TypingPerfTraceEnabled) RecordTypingPerf(TypingPerfAutoNext, autoNextStarted);
+                                        }
                                     }
-                                    else
+                                    else if (!formClosing)
                                     {
                                         switch (NewSendText.AutoNo)
                                         {
@@ -3455,7 +3546,7 @@ namespace WindowsFormsApplication2
                     }
 
                     // 无条件自动发文不应受成绩统计门槛（用时/错字比例）影响。
-                    if (NewSendText.发文状态 && NewSendText.是否自动 && !NewSendText.AutoCondition)
+                    if (!formClosing && NewSendText.发文状态 && NewSendText.是否自动 && !NewSendText.AutoCondition)
                     {
                         long autoNextStarted = TypingPerfTraceEnabled ? Stopwatch.GetTimestamp() : 0;
                         SendNextFun();
@@ -3467,6 +3558,10 @@ namespace WindowsFormsApplication2
                         RecordTypingPerf(TypingPerfPostGrid, postGridStarted);
                         RecordTypingPerf(TypingPerfCompletion, completionStarted);
                     }
+                    if (resumePeriodicTimer && !formClosing && !timerTSend.Enabled)
+                        timerTSend.Start();
+                    });
+                    return;
                 }
 
             }
@@ -4506,9 +4601,14 @@ namespace WindowsFormsApplication2
                     }
                 }
 
+                long wordQueueStarted = TypingPerfTraceEnabled ? Stopwatch.GetTimestamp() : 0;
                 checkWordTask = Task.Factory.StartNew(() =>
                 {
-                    this.richTextBox1.BeginInvoke(开始测词委托);
+                    this.richTextBox1.BeginInvoke(new Action(() =>
+                    {
+                        if (TypingPerfTraceEnabled) RecordTypingPerf(TypingPerfWordQueue, wordQueueStarted);
+                        开始测词委托();
+                    }));
                 });
             }
 
@@ -5088,6 +5188,7 @@ namespace WindowsFormsApplication2
         /// </summary>
         private void SmartCheckWords()
         {
+            long wordAnalysisStarted = TypingPerfTraceEnabled ? Stopwatch.GetTimestamp() : 0;
             string _text = Glob.TypeText;
             if (string.IsNullOrEmpty(Glob.UsedTableIndex))
             {
@@ -5179,6 +5280,7 @@ namespace WindowsFormsApplication2
                 }
             }
 
+            if (TypingPerfTraceEnabled) RecordTypingPerf(TypingPerfWordAnalysis, wordAnalysisStarted);
             if (Glob.BmAlls.Count == 0)
             {
                 this.UIThread(() =>
@@ -5200,6 +5302,7 @@ namespace WindowsFormsApplication2
 
             BeginInvoke(new MethodInvoker(() =>
             { // 计算理论码长
+                long codeFinalizeStarted = TypingPerfTraceEnabled ? Stopwatch.GetTimestamp() : 0;
                 string codeStr = CalcCodeString(Glob.BmAlls, Glob.AllWordDic, Glob.AllCodeDic);
 
                 Glob.词库理论码长 = (double)codeStr.Length / textLen;
@@ -5214,6 +5317,7 @@ namespace WindowsFormsApplication2
 
                 mS1.Invalidate();
                 Glob.IsChecking = false;
+                if (TypingPerfTraceEnabled) RecordTypingPerf(TypingPerfCodeFinalize, codeFinalizeStarted);
             }));
         }
 
@@ -5223,6 +5327,7 @@ namespace WindowsFormsApplication2
         /// </summary>
         private void CalcSingleCodeLen()
         {
+            long wordAnalysisStarted = TypingPerfTraceEnabled ? Stopwatch.GetTimestamp() : 0;
             string _text = Glob.TypeText;
             if (string.IsNullOrEmpty(Glob.UsedTableIndex))
             {
@@ -5279,6 +5384,7 @@ namespace WindowsFormsApplication2
                 }
             }
 
+            if (TypingPerfTraceEnabled) RecordTypingPerf(TypingPerfWordAnalysis, wordAnalysisStarted);
             if (Glob.BmAlls.Count == 0)
             {
                 this.UIThread(() =>
@@ -5300,6 +5406,7 @@ namespace WindowsFormsApplication2
 
             BeginInvoke(new MethodInvoker(() =>
             { // 计算理论码长
+                long codeFinalizeStarted = TypingPerfTraceEnabled ? Stopwatch.GetTimestamp() : 0;
                 string codeStr = CalcCodeString(Glob.BmAlls, Glob.SingleWordDic, Glob.SingleCodeDic);
 
                 Glob.词库理论码长 = (double)codeStr.Length / textLen;
@@ -5314,6 +5421,7 @@ namespace WindowsFormsApplication2
 
                 mS1.Invalidate();
                 Glob.IsChecking = false;
+                if (TypingPerfTraceEnabled) RecordTypingPerf(TypingPerfCodeFinalize, codeFinalizeStarted);
             }));
         }
 

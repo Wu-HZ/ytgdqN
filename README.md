@@ -19,6 +19,12 @@
 
 雨天跟打器是一款免费开源的便携打字练习软件。本分支将原项目从 .NET Framework 4.0 迁移到 .NET 8，以获得更好的性能和现代化支持。
 
+## 当前开发状态
+
+截至 2026-10-12，项目暂停继续开发。跟打性能问题仍未解决：近期日志中输入处理通常约 7–15 ms，段末结算通常约 128–174 ms，偶有更高；用户仍反馈卡顿。最新成绩表列宽优化尚未经过新一轮真实界面验证，不应将当前改动视为性能问题已解决。Release 构建及现有 UI / Legado 回归测试通过，但不能替代实际跟打体验。
+
+如恢复性能排查，可设置 `YTGDQN_TYPING_TRACE=1` 启用诊断，查看 `%TEMP%\RainTyping-ui-profile.log` 中的 `pre-grid`、`post-grid`、`score-grid`、`send-segment`、`clean-before-send` 和 `targetDelay`。诊断日志采用后台写入；测试后可关闭该环境变量。
+
 ## 运行要求
 
 - .NET 8.0 Desktop Runtime ([下载](https://dotnet.microsoft.com/download/dotnet/8.0))

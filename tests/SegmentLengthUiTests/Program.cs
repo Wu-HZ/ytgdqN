@@ -3,6 +3,7 @@ using System.Drawing;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.IO;
+using System.Threading;
 using System.Windows.Forms;
 using WindowsFormsApplication2;
 using WindowsFormsApplication2.Difficulty;
@@ -15,6 +16,7 @@ internal static class Program
     {
         Application.EnableVisualStyles();
         VerifyTypingColors();
+        VerifyDeferredCompletionScheduling();
         VerifyScoreTransaction();
         var host = RuntimeHelpers.GetUninitializedObject(typeof(Form1));
         typeof(Form1).GetField("DiffDict", BindingFlags.Instance | BindingFlags.Public)
@@ -106,13 +108,13 @@ internal static class Program
         Glob.FWords.Clear();
         Glob.WrongCharHistory.Clear();
         var updateErrors = typeof(Form1).GetMethod("UpdateTypingErrors", BindingFlags.Instance | BindingFlags.NonPublic);
-        updateErrors.Invoke(form, new object[] { 0, 4, "abxd", "abcd" });
+        updateErrors.Invoke(form, new object[] { 0, 4, "abxd", "abcd", true });
         CheckColor(richTextBox, 0, Theme.RightBGColor);
         CheckColor(richTextBox, 1, Theme.RightBGColor);
         CheckColor(richTextBox, 2, Theme.FalseBGColor);
         CheckColor(richTextBox, 3, Theme.RightBGColor);
 
-        updateErrors.Invoke(form, new object[] { 0, 4, "abcd", "abcd" });
+        updateErrors.Invoke(form, new object[] { 0, 4, "abcd", "abcd", true });
         for (int i = 0; i < 4; i++) CheckColor(richTextBox, i, Theme.RightBGColor);
         Glob.FWords.Clear();
         Glob.WrongCharHistory.Clear();
@@ -124,6 +126,57 @@ internal static class Program
         richTextBox.SelectionLength = 1;
         Check(richTextBox.SelectionBackColor.ToArgb() == expected.ToArgb(),
             $"typing color mismatch at {index}: {richTextBox.SelectionBackColor} vs {expected}");
+    }
+
+    private static void VerifyDeferredCompletionScheduling()
+    {
+        var host = RuntimeHelpers.GetUninitializedObject(typeof(Form1));
+        using var window = new Form { Opacity = 0, ShowInTaskbar = false };
+        using var richTextBox = new PaintTrackingRichTextBox { Text = "完成刷新" };
+        window.Controls.Add(richTextBox);
+        window.Show();
+        Application.DoEvents();
+
+        int paintCount = 0;
+        bool schedulerReturned = false;
+        bool callbackRanAfterReturn = false;
+        bool callbackRanAfterPaint = false;
+        var schedule = typeof(Form1).GetMethod("ScheduleTypingCompletionAfterPaint", BindingFlags.Instance | BindingFlags.NonPublic);
+        paintCount = richTextBox.PaintCount;
+        richTextBox.Invalidate();
+        schedule.Invoke(host, new object[] { (Action)(() =>
+        {
+            callbackRanAfterReturn = schedulerReturned;
+            callbackRanAfterPaint = richTextBox.PaintCount > paintCount;
+        }) });
+        schedulerReturned = true;
+
+        var timeout = System.Diagnostics.Stopwatch.StartNew();
+        while (!callbackRanAfterReturn && timeout.ElapsedMilliseconds < 250)
+        {
+            Application.DoEvents();
+            Thread.Sleep(1);
+        }
+        Check(callbackRanAfterReturn, "typing completion should be deferred to the UI timer");
+        Check(callbackRanAfterPaint, "pending RichEdit paint should run before deferred completion");
+
+        var closingHost = RuntimeHelpers.GetUninitializedObject(typeof(Form1));
+        bool flushed = false;
+        schedule.Invoke(closingHost, new object[] { (Action)(() => flushed = true) });
+        typeof(Form1).GetMethod("RunPendingTypingCompletion", BindingFlags.Instance | BindingFlags.NonPublic)
+            .Invoke(closingHost, null);
+        Check(flushed, "pending completion should flush synchronously when the window closes");
+    }
+
+    private sealed class PaintTrackingRichTextBox : RichEditBoxLineRender
+    {
+        public int PaintCount { get; private set; }
+
+        protected override void WndProc(ref Message message)
+        {
+            if (message.Msg == 0x000F) PaintCount++;
+            base.WndProc(ref message);
+        }
     }
 
     private static void VerifyScoreTransaction()
